@@ -17,7 +17,9 @@ into a file for the guild's Discord bot, Bot'tar.
   addon writes everything it knows, plus the guild roster (rank, note, level,
   last time online, also for members without the addon), as JSON into its
   saved variables file. Bot'tar reads it from the bot admin's computer. The
-  format and a reader are in [Bot/README.md](Bot/README.md).
+  format and readers for Node.js and Python are in
+  [Bot/README.md](https://github.com/Nedyar/BottarSync/blob/main/Bot/README.md),
+  in the GitHub repository (they are not part of the addon's package).
 - **Every client language.** The addon's texts are in English, German, Spanish
   (EU and Latin America), French, Italian, Korean, Portuguese (Brazil, also
   used by Portugal's client), Russian and Chinese (simplified and
@@ -75,7 +77,8 @@ CurseForge packages every tagged commit pushed here.
    `git push origin v<version>`. A tag containing `beta` or `alpha` makes a
    beta or alpha file instead of a release.
 3. CurseForge builds the zip as `.pkgmeta` says: the `BottarSync` folder
-   without the tests, with `CHANGELOG.md` as the file's changelog.
+   without the tests and without `Bot` (the bot's readers, which CurseForge
+   would not accept), with `CHANGELOG.md` as the file's changelog.
 
 ## License
 

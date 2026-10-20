@@ -344,4 +344,6 @@ local tocVersion = toc:match("## Version: ([%d%.]+)")
 H.check(changelog ~= nil and changelog:match("## ([%d%.]+)") == tocVersion, "the TOC version is the changelog's newest")
 local pkgmeta = Read(".pkgmeta")
 H.check(pkgmeta ~= nil and pkgmeta:find("package%-as: BottarSync") ~= nil, ".pkgmeta packages the folder as BottarSync")
+H.check(pkgmeta ~= nil and pkgmeta:find("\n    %- Tests\n") ~= nil and pkgmeta:find("\n    %- Bot\n") ~= nil,
+    ".pkgmeta leaves the tests and the bot's readers out of the package")
 H.check(toc:find("## SavedVariables: BottarSyncDB, BottarSyncJSON", 1, true) ~= nil, "both saved variables are declared")

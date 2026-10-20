@@ -2,8 +2,12 @@
 # Files starting with a dot (.git, .github, this file...) are always left out.
 package-as: BottarSync
 
+# Bot holds the bot's readers (Node.js, Python) and the format's
+# documentation: not part of the addon, and CurseForge allows no scripts of
+# other kinds in a package.
 ignore:
     - Tests
+    - Bot
 
 manual-changelog:
     filename: CHANGELOG.md

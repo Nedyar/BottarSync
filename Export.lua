@@ -4,8 +4,9 @@
 -- variables, to WTF\Account\<account>\SavedVariables\BottarSync.lua, when
 -- the character logs out or the interface reloads. So at that moment the
 -- whole data set is written as one JSON text into the saved variable
--- BottarSyncJSON, which the bot reads from that file (see Bot\README.md for
--- the format and a reader).
+-- BottarSyncJSON, which the bot reads from that file (see Bot/README.md in
+-- https://github.com/Nedyar/BottarSync for the format and the readers; they
+-- are left out of the addon's package).
 --
 -- The data travels between clients as IDs; names (classes, races,
 -- professions, recipes, talents, items) are looked up here, in the language

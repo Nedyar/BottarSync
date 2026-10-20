@@ -245,9 +245,13 @@ local function Run(command)
     local code = os.execute(command)
     return code == 0 or code == true
 end
-local hasNode = Run("node --version >NUL 2>NUL")
-local hasPython = Run('python -c "import json" >NUL 2>NUL')
-if not hasNode then
+-- A packaged copy has no Bot folder (see .pkgmeta).
+local hasReaders = ReadFile(H.ADDON .. "/Bot/bottarsync.js") ~= nil
+local hasNode = hasReaders and Run("node --version >NUL 2>NUL")
+local hasPython = hasReaders and Run('python -c "import json" >NUL 2>NUL')
+if not hasReaders then
+    print("   (no Bot folder here: the readers are not tested)")
+elseif not hasNode then
     print("   (node not found: the reader is not tested)")
 end
 local readers = {}
@@ -256,7 +260,7 @@ if hasNode then
 end
 if hasPython then
     readers[#readers + 1] = { name = "python", command = 'python "' .. H.ADDON .. '/Bot/bottarsync.py"' }
-else
+elseif hasReaders then
     print("   (python not found: the Python reader is not tested)")
 end
 
