@@ -1,0 +1,41 @@
+## Interface: 16001
+## Title: Bot'tar Sync
+## Notes: Shares your guild's characters (class, race, level, professions, recipes, talents, gear) and writes them to a file for the Bot'tar Discord bot.
+## Notes-deDE: Teilt die Charaktere deiner Gilde (Klasse, Volk, Stufe, Berufe, Rezepte, Talente, Ausrüstung) und schreibt sie in eine Datei für den Discord-Bot Bot'tar.
+## Notes-esES: Comparte los personajes de tu hermandad (clase, raza, nivel, profesiones, recetas, talentos, equipo) y los escribe en un archivo para el bot de Discord Bot'tar.
+## Notes-esMX: Comparte los personajes de tu hermandad (clase, raza, nivel, profesiones, recetas, talentos, equipo) y los escribe en un archivo para el bot de Discord Bot'tar.
+## Notes-frFR: Partage les personnages de votre guilde (classe, race, niveau, métiers, recettes, talents, équipement) et les écrit dans un fichier pour le bot Discord Bot'tar.
+## Notes-itIT: Condivide i personaggi della tua gilda (classe, razza, livello, professioni, ricette, talenti, equipaggiamento) e li scrive in un file per il bot Discord Bot'tar.
+## Notes-koKR: 길드 캐릭터 정보(직업, 종족, 레벨, 전문 기술, 제조법, 특성, 장비)를 공유하고 디스코드 봇 Bot'tar용 파일에 저장합니다.
+## Notes-ptBR: Compartilha os personagens da sua guilda (classe, raça, nível, profissões, receitas, talentos, equipamento) e os grava em um arquivo para o bot do Discord Bot'tar.
+## Notes-ruRU: Делится данными о персонажах вашей гильдии (класс, раса, уровень, профессии, рецепты, таланты, экипировка) и записывает их в файл для Discord-бота Bot'tar.
+## Notes-zhCN: 共享公会角色的信息（职业、种族、等级、专业、配方、天赋、装备），并写入供 Discord 机器人 Bot'tar 使用的文件。
+## Notes-zhTW: 分享公會角色的資訊（職業、種族、等級、專業技能、配方、天賦、裝備），並寫入供 Discord 機器人 Bot'tar 使用的檔案。
+## Author: Nedyar
+## Version: 0.1.0
+## SavedVariables: BottarSyncDB, BottarSyncJSON
+## IconTexture: Interface\Icons\INV_Misc_Note_01
+
+Locales\Locales.lua
+Locales\deDE.lua
+Locales\esES.lua
+Locales\esMX.lua
+Locales\frFR.lua
+Locales\itIT.lua
+Locales\koKR.lua
+Locales\ptBR.lua
+Locales\ruRU.lua
+Locales\zhCN.lua
+Locales\zhTW.lua
+
+Core.lua
+Pack.lua
+Json.lua
+Data.lua
+Comm.lua
+Roster.lua
+Character.lua
+Professions.lua
+Talents.lua
+Sync.lua
+Export.lua
