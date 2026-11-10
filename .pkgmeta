@@ -12,3 +12,10 @@ ignore:
 manual-changelog:
     filename: CHANGELOG.md
     markup-type: markdown
+
+# The CurseForge app installs these with the addon: each packaged file
+# carries them as its required relations (project slugs).
+required-dependencies:
+    - lib-guild-sync
+    - guild-professions-recipes
+    - guild-bank-alts

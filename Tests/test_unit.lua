@@ -327,5 +327,9 @@ local pkgmeta = Read(".pkgmeta")
 H.check(pkgmeta ~= nil and pkgmeta:find("package%-as: BottarSync") ~= nil, ".pkgmeta packages the folder as BottarSync")
 H.check(pkgmeta ~= nil and pkgmeta:find("\n    %- Tests\n") ~= nil and pkgmeta:find("\n    %- Bot\n") ~= nil,
     ".pkgmeta leaves the tests and the bot's readers out of the package")
+-- A guild member installs Bot'tar Sync alone: the CurseForge app brings the
+-- library and the guild's other addons with it.
+H.check(pkgmeta ~= nil and pkgmeta:find("required%-dependencies:\n    %- lib%-guild%-sync\n    %- guild%-professions%-recipes\n    %- guild%-bank%-alts\n") ~= nil,
+    ".pkgmeta makes LibGuildSync and the guild's other addons required relations on CurseForge")
 H.check(toc:find("## SavedVariables: BottarSyncDB, BottarSyncJSON", 1, true) ~= nil, "both saved variables are declared")
 H.check(toc:find("## Dependencies: LibGuildSync", 1, true) ~= nil, "LibGuildSync is a dependency")

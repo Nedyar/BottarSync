@@ -24,17 +24,22 @@ into a file for the guild's Discord bot, Bot'tar.
   (EU and Latin America), French, Italian, Korean, Portuguese (Brazil, also
   used by Portugal's client), Russian and Chinese (simplified and
   traditional).
-- **The guild's other addons.** Guild Professions & Recipes (crafting orders
-  and who knows each recipe) and Guild Bank Alts (the guild bank kept on
-  characters) are separate addons. Bot'tar Sync loads after them when they
-  are installed, but needs neither, and does not read their data yet.
+- **The guild's other addons come with it.** Guild Professions & Recipes
+  (crafting orders and who knows each recipe) and Guild Bank Alts (the guild
+  bank kept on characters) are separate addons, which anyone can install on
+  their own. The CurseForge app installs them with Bot'tar Sync, so a guild
+  member only needs this one. In game Bot'tar Sync loads after them, but
+  runs without them (a member who turns one off keeps sharing their
+  characters), and does not read their data yet.
 
 ## Installing
 
-1. The addon needs **LibGuildSync**, the shared code of the guild addons;
-   the CurseForge app installs it with Bot'tar Sync. By hand, copy both the
-   `BottarSync` and `LibGuildSync` folders into
-   `World of Warcraft\_forever_\Interface\AddOns\`.
+1. With the CurseForge app, install Bot'tar Sync: the app also installs the
+   guild's other addons and **LibGuildSync**, the shared code they all need.
+   By hand, copy the `BottarSync`, `LibGuildSync`,
+   `GuildProfessionsRecipes` and `GuildBankAlts` folders into
+   `World of Warcraft\_forever_\Interface\AddOns\` (Bot'tar Sync itself only
+   needs `LibGuildSync`).
 2. Log in with each character once, and open each profession window once so
    the addon can read the recipes. Once any character of your account has
    opened a profession's window, your other characters with that profession

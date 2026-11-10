@@ -12,7 +12,7 @@
 ## Notes-zhCN: 共享公会角色的信息（职业、种族、等级、专业、配方、天赋、装备），并写入供 Discord 机器人 Bot'tar 使用的文件。
 ## Notes-zhTW: 分享公會角色的資訊（職業、種族、等級、專業技能、配方、天賦、裝備），並寫入供 Discord 機器人 Bot'tar 使用的檔案。
 ## Author: Nedyar
-## Version: 0.1.1
+## Version: 0.2.0
 ## SavedVariables: BottarSyncDB, BottarSyncJSON
 ## Dependencies: LibGuildSync
 ## OptionalDeps: GuildProfessionsRecipes, GuildBankAlts
