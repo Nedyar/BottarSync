@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.1 - KinFolk comes along too
+
+- **Brings KinFolk**, the guild hub addon: the CurseForge app now installs it with Bot'tar Sync, together with the guild's other addons. Bot'tar Sync still runs without it and does not read its data.
+
 ## 0.2.0 - The guild's addons in one install
 
 - **Brings the guild's other addons**: the CurseForge app now installs Guild Professions & Recipes and Guild Bank Alts with Bot'tar Sync, so a guild member only needs this one. Bot'tar Sync still runs without them.

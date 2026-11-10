@@ -328,8 +328,10 @@ H.check(pkgmeta ~= nil and pkgmeta:find("package%-as: BottarSync") ~= nil, ".pkg
 H.check(pkgmeta ~= nil and pkgmeta:find("\n    %- Tests\n") ~= nil and pkgmeta:find("\n    %- Bot\n") ~= nil,
     ".pkgmeta leaves the tests and the bot's readers out of the package")
 -- A guild member installs Bot'tar Sync alone: the CurseForge app brings the
--- library and the guild's other addons with it.
-H.check(pkgmeta ~= nil and pkgmeta:find("required%-dependencies:\n    %- lib%-guild%-sync\n    %- guild%-professions%-recipes\n    %- guild%-bank%-alts\n") ~= nil,
-    ".pkgmeta makes LibGuildSync and the guild's other addons required relations on CurseForge")
+-- library, the guild's other addons and KinFolk with it.
+H.check(pkgmeta ~= nil and pkgmeta:find("required%-dependencies:\n    %- lib%-guild%-sync\n    %- guild%-professions%-recipes\n    %- guild%-bank%-alts\n    %- kinfolk%-guild%-hub\n") ~= nil,
+    ".pkgmeta makes LibGuildSync, the guild's other addons and KinFolk required relations on CurseForge")
+H.check(toc:find("## OptionalDeps: GuildProfessionsRecipes, GuildBankAlts, KinFolk", 1, true) ~= nil,
+    "Bot'tar Sync loads after the guild's other addons and KinFolk, without needing them")
 H.check(toc:find("## SavedVariables: BottarSyncDB, BottarSyncJSON", 1, true) ~= nil, "both saved variables are declared")
 H.check(toc:find("## Dependencies: LibGuildSync", 1, true) ~= nil, "LibGuildSync is a dependency")

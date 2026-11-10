@@ -19,3 +19,4 @@ required-dependencies:
     - lib-guild-sync
     - guild-professions-recipes
     - guild-bank-alts
+    - kinfolk-guild-hub
