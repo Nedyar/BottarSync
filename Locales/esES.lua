@@ -2,7 +2,6 @@
 local _, ns = ...
 
 ns.RegisterLocale("esES", function(L)
-    L["a guild member uses a newer version of Bot'tar Sync that this one cannot talk to. Please update."] = "un miembro de la hermandad usa una versión más nueva de Bot'tar Sync con la que esta no puede comunicarse. Actualiza el addon."
     L["/bottar status - what the addon knows and is doing"] = "/bottar status - qué sabe el addon y qué está haciendo"
     L["/bottar show [name] - the data of a guild member, as the bot gets it"] = "/bottar show [nombre] - los datos de un miembro de la hermandad, tal como los recibe el bot"
     L["/bottar save - write the file for the bot now (reloads the interface)"] = "/bottar save - escribir ahora el archivo para el bot (recarga la interfaz)"
@@ -28,15 +27,4 @@ ns.RegisterLocale("esES", function(L)
     L["Press Ctrl+A, then Ctrl+C, to copy the text."] = "Pulsa Ctrl+A y luego Ctrl+C para copiar el texto."
     L["no guild member called %s."] = "no hay ningún miembro de la hermandad llamado %s."
     L["open these profession windows once so your recipes reach the guild and the bot: %s."] = "abre una vez estas ventanas de profesión para que tus recetas lleguen a la hermandad y al bot: %s."
-    L["a newer version of Bot'tar Sync (%s) is in use in your guild."] = "en tu hermandad se usa una versión más nueva de Bot'tar Sync (%s)."
-    L["sync finished: %d |4record:records; received from %s."] = "sincronización terminada: %d |4registro recibido:registros recibidos; de %s."
-    L["a sync is already running."] = "ya hay una sincronización en curso."
-    L["nobody online has data you are missing."] = "nadie conectado tiene datos que te falten."
-    L["asking the guild for missing data..."] = "pidiendo a la hermandad los datos que faltan..."
-    L["waiting for offers"] = "esperando ofertas"
-    L["receiving from %s (%d |4record:records; so far)"] = "recibiendo de %s (%d |4registro:registros; hasta ahora)"
-    L["sending to %d |4member:members;"] = "enviando a %d |4miembro:miembros;"
-    L["%d |4message:messages; queued (%d |4part:parts;)"] = "%d |4mensaje:mensajes; en cola (%d |4parte:partes;)"
-    L["paused: addon messages are blocked here"] = "en pausa: aquí los mensajes de addons están bloqueados"
-    L["idle"] = "inactiva"
 end)

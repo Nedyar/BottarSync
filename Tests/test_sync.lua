@@ -79,7 +79,7 @@ H.check(world.stats.guild - sent <= 2, "quiet when nothing changes (" .. (world.
 H.section("Sync: saved data")
 world:Logout(carol)
 world:RunFor(5)
-H.eq(type(carol.saved.guilds["Test Guild"].members[alice.guid].b), "string", "records are saved packed")
+H.eq(type(carol.saved.BottarSyncDB.guilds["Test Guild"].members[alice.guid].b), "string", "records are saved packed")
 world:Login(carol)
 world:RunFor(5)
 H.check(RecordOf(carol, alice) ~= nil and RecordOf(carol, alice).tl ~= nil, "records come back after logging in again")

@@ -2,7 +2,6 @@
 local _, ns = ...
 
 ns.RegisterLocale("zhCN", function(L)
-    L["a guild member uses a newer version of Bot'tar Sync that this one cannot talk to. Please update."] = "有公会成员使用了更新版本的 Bot'tar Sync，当前版本无法与之通信。请更新插件。"
     L["/bottar status - what the addon knows and is doing"] = "/bottar status - 插件掌握的数据和正在进行的操作"
     L["/bottar show [name] - the data of a guild member, as the bot gets it"] = "/bottar show [名字] - 机器人收到的某位公会成员的数据"
     L["/bottar save - write the file for the bot now (reloads the interface)"] = "/bottar save - 立即写入机器人用的文件（会重新加载界面）"
@@ -28,15 +27,4 @@ ns.RegisterLocale("zhCN", function(L)
     L["Press Ctrl+A, then Ctrl+C, to copy the text."] = "按 Ctrl+A，再按 Ctrl+C 复制文本。"
     L["no guild member called %s."] = "公会中没有名为 %s 的成员。"
     L["open these profession windows once so your recipes reach the guild and the bot: %s."] = "请各打开一次这些专业窗口，让你的配方传给公会和机器人：%s。"
-    L["a newer version of Bot'tar Sync (%s) is in use in your guild."] = "你的公会中有人在使用更新版本的 Bot'tar Sync（%s）。"
-    L["sync finished: %d |4record:records; received from %s."] = "同步完成：收到 %d 条记录，来自 %s。"
-    L["a sync is already running."] = "同步已在进行中。"
-    L["nobody online has data you are missing."] = "在线的人中没有你缺少的数据。"
-    L["asking the guild for missing data..."] = "正在向公会索取缺少的数据……"
-    L["waiting for offers"] = "等待响应"
-    L["receiving from %s (%d |4record:records; so far)"] = "正在接收 %s 的数据（目前 %d 条记录）"
-    L["sending to %d |4member:members;"] = "正在发送给 %d 名成员"
-    L["%d |4message:messages; queued (%d |4part:parts;)"] = "%d 条消息排队中（%d 段）"
-    L["paused: addon messages are blocked here"] = "已暂停：此处禁止插件消息"
-    L["idle"] = "空闲"
 end)

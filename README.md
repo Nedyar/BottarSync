@@ -31,8 +31,10 @@ into a file for the guild's Discord bot, Bot'tar.
 
 ## Installing
 
-1. Copy the `BottarSync` folder into
-   `World of Warcraft\_classic_beta_\Interface\AddOns\`.
+1. The addon needs **LibGuildSync**, the shared code of the guild addons;
+   the CurseForge app installs it with Bot'tar Sync. By hand, copy both the
+   `BottarSync` and `LibGuildSync` folders into
+   `World of Warcraft\_forever_\Interface\AddOns\`.
 2. Log in with each character once, and open each profession window once so
    the addon can read the recipes. Once any character of your account has
    opened a profession's window, your other characters with that profession
@@ -59,16 +61,18 @@ the game, as the guild window shows it; officer notes are never exported.
 
 ## Tests
 
-The tests run outside the game with Lua 5.1, from the addon folder:
+The tests run outside the game with Lua 5.1, from the addon folder, with
+LibGuildSync's folder next to it (its harness and its files are used):
 
 ```
 lua5.1 Tests\run.lua . Tests
 ```
 
-They load the addon's real files into simulated clients that talk through a
-simulated server, and check the sync, the saved data, the JSON and, when
-Node.js is installed, the bot's reader on files written the way the game
-writes them.
+They load LibGuildSync's and the addon's real files into simulated clients
+that talk through a simulated server, and check the sync, the saved data,
+the JSON and, when Node.js is installed, the bot's reader on files written
+the way the game writes them. One test puts members on the last release
+(taken from its git tag) in the same guild as members on this version.
 
 ## Releasing
 

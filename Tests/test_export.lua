@@ -46,7 +46,7 @@ Errors(world, "setup")
 
 H.section("Export: the file at logout")
 world:Logout(carol)
-local jsonText = carol.savedJSON
+local jsonText = carol.saved.BottarSyncJSON
 H.eq(type(jsonText), "string", "the JSON is saved in BottarSyncJSON")
 local ok, data = pcall(H.DecodeJSON, jsonText or "")
 H.check(ok, "it is valid JSON" .. (ok and "" or (": " .. tostring(data))))
@@ -56,7 +56,7 @@ end
 H.check(not jsonText:find("\n", 1, true), "compact: a single line")
 H.eq(data.format, 1, "format version")
 H.eq(data.addon, "Bot'tar Sync", "addon name")
-H.eq(data.addonVersion, "0.1.0", "addon version")
+H.eq(data.addonVersion, H.MAIN.fields.Version, "addon version, from the TOC")
 H.eq(type(data.generatedAt), "number", "generation time")
 H.check(type(data.generatedAtUtc) == "string" and data.generatedAtUtc:find("^%d%d%d%d%-%d%d%-%d%dT%d%d:%d%d:%d%dZ$") ~= nil, "UTC time in ISO 8601")
 H.eq(data.locale, "enUS", "names are in the exporting client's language")
@@ -96,7 +96,7 @@ H.eq(a.online, true, "online")
 H.eq(a.lastOnline, data.generatedAt, "online now")
 H.eq(a.hasAddon, true, "has the addon")
 H.eq(type(a.updatedAt), "number", "update time")
-H.eq(a.addonVersion, "0.1.0", "their addon version")
+H.eq(a.addonVersion, H.MAIN.fields.Version, "their addon version")
 H.eq(a.itemLevel, 52.38, "item level")
 
 local leather = Find(a.professions, "id", 165)
@@ -168,14 +168,14 @@ world:Login(carol)
 world:RunFor(5)
 carol.env.SlashCmdList.BOTTARSYNC("export off")
 world:Logout(carol)
-H.eq(carol.savedJSON, nil, "no JSON when the export is off")
+H.eq(carol.saved.BottarSyncJSON, nil, "no JSON when the export is off")
 world:Login(carol)
 world:RunFor(5)
 carol.env.SlashCmdList.BOTTARSYNC("export on")
 carol.env.SlashCmdList.BOTTARSYNC("save")
 H.check(carol.reloaded, "/bottar save reloads the interface")
 world:Logout(carol)
-H.eq(type(carol.savedJSON), "string", "the JSON is back once turned on")
+H.eq(type(carol.saved.BottarSyncJSON), "string", "the JSON is back once turned on")
 Errors(world, "export off and on")
 
 H.section("Export: /bottar show")
@@ -267,8 +267,8 @@ end
 local savedFile = OUT .. "/BottarSync.lua"
 local fixtures = {
     -- The game's own style, and Lua's %q.
-    { "wow", function() H.WriteSavedVariables(savedFile, { { "BottarSyncDB", carol.saved }, { "BottarSyncJSON", carol.savedJSON } }, "wow") end, carol.savedJSON },
-    { "%q", function() H.WriteSavedVariables(savedFile, { { "BottarSyncDB", carol.saved }, { "BottarSyncJSON", carol.savedJSON } }, "q") end, carol.savedJSON },
+    { "wow", function() H.WriteSavedVariables(savedFile, { { "BottarSyncDB", carol.saved.BottarSyncDB }, { "BottarSyncJSON", carol.saved.BottarSyncJSON } }, "wow") end, carol.saved.BottarSyncJSON },
+    { "%q", function() H.WriteSavedVariables(savedFile, { { "BottarSyncDB", carol.saved.BottarSyncDB }, { "BottarSyncJSON", carol.saved.BottarSyncJSON } }, "q") end, carol.saved.BottarSyncJSON },
     -- Escapes the game might write: \ddd bytes, a backslash before a line break.
     { "\\ddd and \\newline", function()
         WriteFile(savedFile, '\nBottarSyncDB = {\n["schema"] = 1,\n}\nBottarSyncJSON = "{\\"a\\":\\"\\195\\177x\\\\\\\\y\\",\\\n\\"b\\":1}"\n')

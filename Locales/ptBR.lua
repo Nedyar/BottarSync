@@ -2,7 +2,6 @@
 local _, ns = ...
 
 ns.RegisterLocale("ptBR", function(L)
-    L["a guild member uses a newer version of Bot'tar Sync that this one cannot talk to. Please update."] = "um membro da guilda usa uma versão mais nova do Bot'tar Sync com a qual esta não consegue se comunicar. Atualize o addon."
     L["/bottar status - what the addon knows and is doing"] = "/bottar status - o que o addon sabe e está fazendo"
     L["/bottar show [name] - the data of a guild member, as the bot gets it"] = "/bottar show [nome] - os dados de um membro da guilda, como o bot os recebe"
     L["/bottar save - write the file for the bot now (reloads the interface)"] = "/bottar save - gravar agora o arquivo para o bot (recarrega a interface)"
@@ -28,15 +27,4 @@ ns.RegisterLocale("ptBR", function(L)
     L["Press Ctrl+A, then Ctrl+C, to copy the text."] = "Pressione Ctrl+A, depois Ctrl+C, para copiar o texto."
     L["no guild member called %s."] = "nenhum membro da guilda se chama %s."
     L["open these profession windows once so your recipes reach the guild and the bot: %s."] = "abra uma vez estas janelas de profissão para que suas receitas cheguem à guilda e ao bot: %s."
-    L["a newer version of Bot'tar Sync (%s) is in use in your guild."] = "uma versão mais nova do Bot'tar Sync (%s) está em uso na sua guilda."
-    L["sync finished: %d |4record:records; received from %s."] = "sincronização concluída: %d |4registro recebido:registros recebidos; de %s."
-    L["a sync is already running."] = "já há uma sincronização em andamento."
-    L["nobody online has data you are missing."] = "ninguém conectado tem dados que faltam para você."
-    L["asking the guild for missing data..."] = "pedindo à guilda os dados que faltam..."
-    L["waiting for offers"] = "aguardando ofertas"
-    L["receiving from %s (%d |4record:records; so far)"] = "recebendo de %s (%d |4registro:registros; até agora)"
-    L["sending to %d |4member:members;"] = "enviando para %d |4membro:membros;"
-    L["%d |4message:messages; queued (%d |4part:parts;)"] = "%d |4mensagem:mensagens; na fila (%d |4parte:partes;)"
-    L["paused: addon messages are blocked here"] = "em pausa: as mensagens de addons estão bloqueadas aqui"
-    L["idle"] = "ociosa"
 end)

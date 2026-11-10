@@ -1,11 +1,14 @@
--- lua5.1 run.lua <addon folder> <tests folder> [test names...]
+-- lua5.1 Tests/run.lua <addon folder> <tests folder> [test names...]
+-- The harness is LibGuildSync's, from the folder next to this addon's.
 ADDON_PATH = arg[1]
+ADDON_NAME = "BottarSync"
+LIB_PATH = arg[1] .. "/../LibGuildSync"
 local TESTS = arg[2]
-local H = dofile(TESTS .. "/harness.lua")
+local H = dofile(LIB_PATH .. "/Tests/harness.lua")
 
 local names = { select(3, unpack(arg)) }
 if #names == 0 then
-    names = { "unit", "sync", "export" }
+    names = { "unit", "sync", "export", "versions" }
 end
 for _, name in ipairs(names) do
     local chunk = assert(loadfile(TESTS .. "/test_" .. name .. ".lua"))

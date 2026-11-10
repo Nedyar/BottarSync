@@ -2,7 +2,6 @@
 local _, ns = ...
 
 ns.RegisterLocale("koKR", function(L)
-    L["a guild member uses a newer version of Bot'tar Sync that this one cannot talk to. Please update."] = "어떤 길드원이 이 버전과 통신할 수 없는 새 버전의 Bot'tar Sync를 사용하고 있습니다. 애드온을 업데이트하세요."
     L["/bottar status - what the addon knows and is doing"] = "/bottar status - 애드온이 알고 있는 정보와 하고 있는 일"
     L["/bottar show [name] - the data of a guild member, as the bot gets it"] = "/bottar show [이름] - 봇이 받는 그대로의 길드원 데이터"
     L["/bottar save - write the file for the bot now (reloads the interface)"] = "/bottar save - 지금 봇용 파일 저장 (인터페이스를 다시 불러옵니다)"
@@ -28,15 +27,4 @@ ns.RegisterLocale("koKR", function(L)
     L["Press Ctrl+A, then Ctrl+C, to copy the text."] = "텍스트를 복사하려면 Ctrl+A, Ctrl+C를 차례로 누르세요."
     L["no guild member called %s."] = "%s(이)라는 길드원이 없습니다."
     L["open these profession windows once so your recipes reach the guild and the bot: %s."] = "제조법이 길드와 봇에 전달되도록 이 전문 기술 창들을 한 번씩 여세요: %s."
-    L["a newer version of Bot'tar Sync (%s) is in use in your guild."] = "길드에서 새 버전의 Bot'tar Sync(%s)를 사용하고 있습니다."
-    L["sync finished: %d |4record:records; received from %s."] = "동기화 완료: 기록 %d개 받음 (보낸 사람: %s)."
-    L["a sync is already running."] = "이미 동기화가 진행 중입니다."
-    L["nobody online has data you are missing."] = "접속 중인 길드원 중 빠진 데이터를 가진 사람이 없습니다."
-    L["asking the guild for missing data..."] = "빠진 데이터를 길드에 요청하는 중..."
-    L["waiting for offers"] = "응답 기다리는 중"
-    L["receiving from %s (%d |4record:records; so far)"] = "%s에게서 받는 중 (지금까지 기록 %d개)"
-    L["sending to %d |4member:members;"] = "길드원 %d명에게 보내는 중"
-    L["%d |4message:messages; queued (%d |4part:parts;)"] = "대기 중인 메시지 %d개 (조각 %d개)"
-    L["paused: addon messages are blocked here"] = "일시 중지: 여기서는 애드온 메시지가 차단됩니다"
-    L["idle"] = "대기"
 end)
