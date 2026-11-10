@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.1 - Alongside the guild's other addons
+
+- **Loads after the guild's other addons**, Guild Professions & Recipes and Guild Bank Alts, when they are installed. Neither is required.
+
 ## 0.1.0 - First release
 
 - **Every guild member's characters**, shared through hidden addon messages: level, class, race, sex, faction, item level and equipped items, professions with every learned recipe, and talents, both specs with dual spec.

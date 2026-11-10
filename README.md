@@ -2,7 +2,7 @@
 
 # Bot'tar Sync
 
-An addon for WoW Forever (the `_classic_beta_` client, 1.60.x) that shares the
+An addon for WoW Forever (the `_forever_` client, 1.60.x) that shares the
 characters of every guild member with the addon, and writes the whole guild
 into a file for the guild's Discord bot, Bot'tar.
 
@@ -24,6 +24,10 @@ into a file for the guild's Discord bot, Bot'tar.
   (EU and Latin America), French, Italian, Korean, Portuguese (Brazil, also
   used by Portugal's client), Russian and Chinese (simplified and
   traditional).
+- **The guild's other addons.** Guild Professions & Recipes (crafting orders
+  and who knows each recipe) and Guild Bank Alts (the guild bank kept on
+  characters) are separate addons. Bot'tar Sync loads after them when they
+  are installed, but needs neither, and does not read their data yet.
 
 ## Installing
 
