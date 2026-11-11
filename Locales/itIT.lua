@@ -27,4 +27,7 @@ ns.RegisterLocale("itIT", function(L)
     L["Press Ctrl+A, then Ctrl+C, to copy the text."] = "Premi Ctrl+A, poi Ctrl+C, per copiare il testo."
     L["no guild member called %s."] = "nessun membro della gilda si chiama %s."
     L["open these profession windows once so your recipes reach the guild and the bot: %s."] = "apri una volta queste finestre di professione perché le tue ricette arrivino alla gilda e al bot: %s."
+    L["Open or close KinFolk"] = "Apri o chiudi KinFolk"
+    L["Open or close the game's guild window"] = "Apri o chiudi la finestra della gilda del gioco"
+    L["KinFolk is not installed, or it is turned off."] = "KinFolk non è installato, oppure è disattivato."
 end)

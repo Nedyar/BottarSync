@@ -27,4 +27,7 @@ ns.RegisterLocale("zhCN", function(L)
     L["Press Ctrl+A, then Ctrl+C, to copy the text."] = "按 Ctrl+A，再按 Ctrl+C 复制文本。"
     L["no guild member called %s."] = "公会中没有名为 %s 的成员。"
     L["open these profession windows once so your recipes reach the guild and the bot: %s."] = "请各打开一次这些专业窗口，让你的配方传给公会和机器人：%s。"
+    L["Open or close KinFolk"] = "打开或关闭 KinFolk"
+    L["Open or close the game's guild window"] = "打开或关闭游戏自带的公会窗口"
+    L["KinFolk is not installed, or it is turned off."] = "KinFolk 未安装或已关闭。"
 end)

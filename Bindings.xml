@@ -1,0 +1,6 @@
+<Bindings>
+    <!-- Opens or closes KinFolk (see KinFolk.lua). -->
+    <Binding name="BOTTARSYNC_KINFOLK" header="BOTTARSYNC" category="ADDONS">
+        BottarSync_ToggleKinFolk()
+    </Binding>
+</Bindings>

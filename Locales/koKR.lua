@@ -27,4 +27,7 @@ ns.RegisterLocale("koKR", function(L)
     L["Press Ctrl+A, then Ctrl+C, to copy the text."] = "텍스트를 복사하려면 Ctrl+A, Ctrl+C를 차례로 누르세요."
     L["no guild member called %s."] = "%s(이)라는 길드원이 없습니다."
     L["open these profession windows once so your recipes reach the guild and the bot: %s."] = "제조법이 길드와 봇에 전달되도록 이 전문 기술 창들을 한 번씩 여세요: %s."
+    L["Open or close KinFolk"] = "KinFolk 열기/닫기"
+    L["Open or close the game's guild window"] = "게임의 길드 창 열기/닫기"
+    L["KinFolk is not installed, or it is turned off."] = "KinFolk이 설치되어 있지 않거나 꺼져 있습니다."
 end)

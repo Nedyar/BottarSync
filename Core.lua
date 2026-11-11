@@ -59,7 +59,7 @@ events:SetScript("OnEvent", function(self, event, name)
         Lib.Start(ns)
         -- Each part starts on its own, so a failure in one (reported as a normal
         -- Lua error) does not stop the others.
-        for _, init in ipairs({ ns.Character.Init, ns.Professions.Init, ns.Talents.Init, ns.Export.Init }) do
+        for _, init in ipairs({ ns.Character.Init, ns.Professions.Init, ns.Talents.Init, ns.Export.Init, ns.KinFolk.Init }) do
             xpcall(init, geterrorhandler())
         end
     end

@@ -335,3 +335,6 @@ H.check(toc:find("## OptionalDeps: GuildProfessionsRecipes, GuildBankAlts, KinFo
     "Bot'tar Sync loads after the guild's other addons and KinFolk, without needing them")
 H.check(toc:find("## SavedVariables: BottarSyncDB, BottarSyncJSON", 1, true) ~= nil, "both saved variables are declared")
 H.check(toc:find("## Dependencies: LibGuildSync", 1, true) ~= nil, "LibGuildSync is a dependency")
+-- The game reads Bindings.xml by itself: not in the TOC, but in the package.
+H.check(Read("Bindings.xml") ~= nil and pkgmeta ~= nil and pkgmeta:find("Bindings", 1, true) == nil,
+    "Bindings.xml is packaged with the addon")

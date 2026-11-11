@@ -32,6 +32,13 @@ into a file for the guild's Discord bot, Bot'tar.
   guild member only needs this one. In game Bot'tar Sync loads after them,
   but runs without them (a member who turns one off keeps sharing their
   characters), and does not read their data yet.
+- **Between the guild window and KinFolk.** With KinFolk on, the game's guild
+  window gets a button with KinFolk's logo, left of its minimize and close
+  buttons, that opens and closes KinFolk; KinFolk's window gets a button with
+  the guild tabard, left of its close button, that opens and closes the
+  game's guild window. A key binding (Key Bindings, AddOns, Bot'tar Sync)
+  opens and closes KinFolk too, such as Shift+J while J keeps the game's
+  guild window.
 
 ## Installing
 
@@ -77,7 +84,8 @@ lua5.1 Tests\run.lua . Tests
 They load LibGuildSync's and the addon's real files into simulated clients
 that talk through a simulated server, and check the sync, the saved data,
 the JSON and, when Node.js is installed, the bot's reader on files written
-the way the game writes them. One test puts members on the last release
+the way the game writes them. Another checks the KinFolk buttons and key
+against a stand-in for KinFolk's public pieces. One test puts members on the last release
 (taken from its git tag) in the same guild as members on this version.
 
 ## Releasing

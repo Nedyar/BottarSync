@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 - Between the guild window and KinFolk
+
+- **A KinFolk button on the game's guild window**, with KinFolk's logo, left of the minimize and close buttons: it opens and closes KinFolk.
+- **A guild window button on KinFolk's window**, with the guild tabard, left of its close button: it opens and closes the game's guild window. Neither button touches the other window.
+- Both look like the game's own title bar buttons: the same red frame, size, spacing, pressed and highlight looks, with their icon inside.
+- **A key to open and close KinFolk**: in the game's Key Bindings, under AddOns, Bot'tar Sync. Shift+J works, for example, while J keeps opening the game's guild window.
+- Without KinFolk none of this shows, and the key only says that KinFolk is missing.
+
 ## 0.2.1 - KinFolk comes along too
 
 - **Brings KinFolk**, the guild hub addon: the CurseForge app now installs it with Bot'tar Sync, together with the guild's other addons. Bot'tar Sync still runs without it and does not read its data.
