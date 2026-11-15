@@ -96,7 +96,9 @@ H.eq(a.online, true, "online")
 H.eq(a.lastOnline, data.generatedAt, "online now")
 H.eq(a.hasAddon, true, "has the addon")
 H.eq(type(a.updatedAt), "number", "update time")
-H.eq(a.addonVersion, H.MAIN.fields.Version, "their addon version")
+-- The version each member tells the guild (ANNOUNCE_AS while a version is
+-- tried before its release), not the TOC's.
+H.eq(a.addonVersion, alice.ns.VersionString(alice.ns.VERSION_NUM), "their addon version, as they announce it")
 H.eq(a.itemLevel, 52.38, "item level")
 
 local leather = Find(a.professions, "id", 165)

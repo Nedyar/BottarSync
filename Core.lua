@@ -18,6 +18,15 @@ Lib.Attach(ns, {
     savedVariable = "BottarSyncDB",
 })
 
+-- While a version that keeps the protocol is tried in game before its
+-- release, it tells the guild it runs the last release (ANNOUNCE_AS): it
+-- keeps sharing with the members on it, who are not told to update to a
+-- version they cannot get yet. Set it to nil for the release.
+local ANNOUNCE_AS = nil
+if ANNOUNCE_AS then
+    ns.VERSION_NUM = Lib.VersionNumber(ANNOUNCE_AS)
+end
+
 -- Our own character has been read, so what we announce is current.
 function ns.Sync.OwnReady()
     return ns.Character.ready and ns.Professions.ready

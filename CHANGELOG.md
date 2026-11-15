@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1 - Guild Builds comes along too
+
+- **Brings Guild Builds**, the guild's talent builds and gear sets in the guild roster: the CurseForge app now installs it with Bot'tar Sync, together with the guild's other addons. Bot'tar Sync still runs without it and does not read its data.
+
 ## 0.3.0 - Between the guild window and KinFolk
 
 - **A KinFolk button on the game's guild window**, with KinFolk's logo, left of the minimize and close buttons: it opens and closes KinFolk.

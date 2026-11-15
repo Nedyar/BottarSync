@@ -25,10 +25,11 @@ into a file for the guild's Discord bot, Bot'tar.
   used by Portugal's client), Russian and Chinese (simplified and
   traditional).
 - **The guild's other addons come with it.** Guild Professions & Recipes
-  (crafting orders and who knows each recipe) and Guild Bank Alts (the guild
-  bank kept on characters) are separate addons, which anyone can install on
-  their own. The guild also uses KinFolk, a guild hub addon by another
-  author. The CurseForge app installs all three with Bot'tar Sync, so a
+  (crafting orders and who knows each recipe), Guild Bank Alts (the guild
+  bank kept on characters) and Guild Builds (talent builds and gear sets in
+  the guild roster) are separate addons, which anyone can install on their
+  own. The guild also uses KinFolk, a guild hub addon by another author.
+  The CurseForge app installs all four with Bot'tar Sync, so a
   guild member only needs this one. In game Bot'tar Sync loads after them,
   but runs without them (a member who turns one off keeps sharing their
   characters), and does not read their data yet.
@@ -45,9 +46,9 @@ into a file for the guild's Discord bot, Bot'tar.
 1. With the CurseForge app, install Bot'tar Sync: the app also installs the
    guild's other addons and **LibGuildSync**, the shared code they all need.
    By hand, copy the `BottarSync`, `LibGuildSync`,
-   `GuildProfessionsRecipes`, `GuildBankAlts` and `KinFolk` folders into
-   `World of Warcraft\_forever_\Interface\AddOns\` (Bot'tar Sync itself only
-   needs `LibGuildSync`).
+   `GuildProfessionsRecipes`, `GuildBankAlts`, `GuildBuilds` and `KinFolk`
+   folders into `World of Warcraft\_forever_\Interface\AddOns\` (Bot'tar
+   Sync itself only needs `LibGuildSync`).
 2. Log in with each character once, and open each profession window once so
    the addon can read the recipes. Once any character of your account has
    opened a profession's window, your other characters with that profession
@@ -94,7 +95,10 @@ Once the addon has a CurseForge project with this repository's webhook,
 CurseForge packages every tagged commit pushed here.
 
 1. Raise `## Version` in `BottarSync.toc` and add that version's entry at
-   the top of `CHANGELOG.md`. The tests check that both match.
+   the top of `CHANGELOG.md`. The tests check that both match. If
+   `ANNOUNCE_AS` is set in `Core.lua` (a version tried in game while telling
+   the guild it is the last release), set it to nil. The tests print a note
+   while it is on.
 2. Commit, tag the commit `v<version>` and push the tag:
    `git push origin v<version>`. A tag containing `beta` or `alpha` makes a
    beta or alpha file instead of a release.
