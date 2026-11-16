@@ -24,8 +24,12 @@ Pack.LIMITS = {
 -- A record is what one character shares about itself, under its GUID:
 --   n = name, rl = realm, t = time of its last change, av = addon version,
 --   c = class ID, r = race ID, sx = sex (2 male, 3 female), f = faction
---   (1 Alliance, 2 Horde, 3 neutral), l = level, il = average item level
---   of the equipped items in hundredths,
+--   (1 Alliance, 2 Horde, 3 neutral), l = level.
+-- Versions before 0.4 also shared what other addons share now (see
+-- Sources.lua); their place in the packed form stays, written empty, so
+-- those versions read 0.4's records, and read from theirs then dropped
+-- (Data.CleanRecord):
+--   il = average item level of the equipped items in hundredths,
 --   p = professions: { [skillLineID] = { r = rank, m = max rank,
 --       o = display order, lk = the profession's spell, k = recipes } },
 --       k being a sorted list of recipe IDs, false for professions without
@@ -211,7 +215,7 @@ local function RecordBody(guid, record)
     writer:UInt(record.l or 0)
     -- 0 means unknown, so the item level is stored plus one.
     writer:UInt(record.il and record.il + 1 or 0)
-    WriteProfessions(writer, record.p)
+    WriteProfessions(writer, record.p or {})
     WriteGear(writer, record.g)
     WriteTalents(writer, record.tl)
     return writer:Result()

@@ -11,9 +11,15 @@
 -- The data travels between clients as IDs; names (classes, races,
 -- professions, recipes, talents, items) are looked up here, in the language
 -- of this client.
+--
+-- Each member's data comes from the addon that shares it (Sources.lua): the
+-- character and the roster from Bot'tar Sync, professions and recipes from
+-- Guild Professions & Recipes, talents, items worn and item level from Guild
+-- Builds.
 local _, ns = ...
 local L = ns.L
 local Json = ns.Json
+local Sources = ns.Sources
 
 local Export = {}
 ns.Export = Export
@@ -143,11 +149,12 @@ end
 local warmQueue, warmTicker, warmed = {}, nil, {}
 local WARM_PER_TICK = 10
 
+-- record: a Guild Builds record, with the items worn (w).
 local function Warm(record)
-    if not record or not record.g or not C_Item.RequestLoadItemDataByID then
+    if type(record) ~= "table" or type(record.w) ~= "table" or not C_Item.RequestLoadItemDataByID then
         return
     end
-    for _, item in ipairs(record.g) do
+    for _, item in ipairs(record.w) do
         local itemID = ItemFields(item.i)
         if itemID and not warmed[itemID] then
             warmed[itemID] = true
@@ -171,9 +178,10 @@ end
 
 -- One member ---------------------------------------------------------------------
 
-local function ProfessionsJSON(record)
+-- professions: a Guild Professions & Recipes record's p.
+local function ProfessionsJSON(professions)
     local list = {}
-    for _, prof in ipairs(ns.Data.SortedProfessions(record)) do
+    for _, prof in ipairs(ns.Data.SortedProfessions(professions)) do
         local recipes
         if prof.k == false then
             recipes = Array({})
@@ -195,6 +203,9 @@ local function ProfessionsJSON(record)
 end
 
 local function TalentsJSON(talents)
+    if not talents then
+        return nil
+    end
     local specs = {}
     for _, spec in ipairs(talents.s) do
         local tabs, summary = {}, {}
@@ -221,6 +232,7 @@ local function TalentsJSON(talents)
         specs[#specs + 1] = Object(
             "group", spec.gr,
             "active", spec.gr == talents.ag,
+            "shared", spec.shared,
             "summary", table.concat(summary, "/"),
             "tabs", Array(tabs),
             "talents", Array(list))
@@ -233,6 +245,12 @@ local function TalentsJSON(talents)
         "specs", Array(specs))
 end
 
+-- A member's talents, from their Guild Builds record.
+local function TalentsOf(builds)
+    return TalentsJSON(ns.TalentTree.Talents(builds))
+end
+
+-- gear: a Guild Builds record's items worn (w).
 local function EquipmentJSON(gear)
     local list = {}
     for _, item in ipairs(gear) do
@@ -252,8 +270,10 @@ local function EquipmentJSON(gear)
 end
 
 -- entry: the member's roster entry (nil when not in the roster read);
--- record: what their addon shared (nil without the addon).
-local function MemberJSON(guid, entry, record, now)
+-- record: what their Bot'tar Sync shared (nil without it); crafts and
+-- builds: their records of Guild Professions & Recipes and of Guild Builds
+-- (nil without them).
+local function MemberJSON(guid, entry, record, crafts, builds, now)
     local level = record and record.l ~= 0 and record.l or nil
     if entry and entry.l and (not level or entry.l > level) then
         level = entry.l
@@ -281,31 +301,61 @@ local function MemberJSON(guid, entry, record, now)
         "hasAddon", record ~= nil,
         "updatedAt", record and record.t or nil,
         "addonVersion", record and record.av > 0 and ns.VersionString(record.av) or nil,
-        "itemLevel", record and record.il and record.il / 100 or nil,
-        "professions", record and ProfessionsJSON(record) or nil,
-        "talents", record and record.tl and TalentsJSON(record.tl) or nil,
-        "equipment", record and record.g and EquipmentJSON(record.g) or nil)
+        "itemLevel", builds and type(builds.il) == "number" and builds.il / 100 or nil,
+        "professions", crafts and ProfessionsJSON(crafts.p) or nil,
+        "talents", builds and TalentsOf(builds) or nil,
+        "equipment", builds and type(builds.w) == "table" and EquipmentJSON(builds.w) or nil)
 end
 
 -- The whole file ---------------------------------------------------------------------
 
-local function SortedMembers(guild)
+-- What each source knows of a guild's members: { records, crafts, builds },
+-- each { [GUID] = record }.
+local function Known(guildKey, guild)
+    local records = {}
+    for guid, record in pairs(guild and guild.members or {}) do
+        if ns.Data.IsShareable(record) then
+            records[guid] = record
+        end
+    end
+    return {
+        records = records,
+        crafts = Sources.Records(Sources.PROFESSIONS, guildKey),
+        builds = Sources.Records(Sources.BUILDS, guildKey),
+    }
+end
+
+local function SortedMembers(guildKey, guild)
     local roster = guild.roster and guild.roster.m
+    local known = Known(guildKey, guild)
     local list = {}
+    local function Add(guid, entry)
+        list[#list + 1] = {
+            guid = guid, entry = entry, record = known.records[guid],
+            crafts = known.crafts[guid], builds = known.builds[guid],
+        }
+    end
     if roster then
         for guid, entry in pairs(roster) do
-            list[#list + 1] = { guid = guid, entry = entry, record = ns.Data.IsShareable(guild.members[guid]) and guild.members[guid] or nil }
+            Add(guid, entry)
         end
     else
-        -- Never read the roster of this guild: what the addon users shared.
-        for guid, record in pairs(guild.members) do
-            if ns.Data.IsShareable(record) then
-                list[#list + 1] = { guid = guid, record = record }
+        -- Never read the roster of this guild: whoever any of the addons
+        -- knows.
+        local seen = {}
+        for _, source in ipairs({ known.records, known.crafts, known.builds }) do
+            for guid in pairs(source) do
+                if not seen[guid] then
+                    seen[guid] = true
+                    Add(guid, nil)
+                end
             end
         end
     end
     for _, item in ipairs(list) do
-        item.sortName = ((item.entry and item.entry.n) or (item.record and item.record.n) or ""):lower()
+        local name = (item.entry and item.entry.n) or (item.record and item.record.n)
+            or (item.crafts and item.crafts.n) or (item.builds and item.builds.n)
+        item.sortName = (type(name) == "string" and name or ""):lower()
     end
     table.sort(list, function(a, b)
         if a.sortName ~= b.sortName then
@@ -318,8 +368,8 @@ end
 
 local function GuildJSON(guildKey, guild, now)
     local members, withAddon = {}, 0
-    for _, item in ipairs(SortedMembers(guild)) do
-        members[#members + 1] = MemberJSON(item.guid, item.entry, item.record, now)
+    for _, item in ipairs(SortedMembers(guildKey, guild)) do
+        members[#members + 1] = MemberJSON(item.guid, item.entry, item.record, item.crafts, item.builds, now)
         if item.record then
             withAddon = withAddon + 1
         end
@@ -366,6 +416,7 @@ function Export.WriteSaved()
         return
     end
     local started = debugprofilestop and debugprofilestop()
+    ns.TalentTree.loggingOut = true
     BottarSyncJSON = Export.Build()
     if started then
         ns.Debug("file for the bot built in %d ms", debugprofilestop() - started)
@@ -449,23 +500,19 @@ function Export.Show(name)
         return
     end
     local roster = guild.roster and guild.roster.m
-    local record = guild.members[guid]
+    local known = Known(guildKey, guild)
+    local record = known.records[guid]
     local entry = (roster and roster[guid]) or ns.Roster.members[guid]
-    if not ns.Data.IsShareable(record) then
-        record = nil
-    end
-    local text = Json.Encode(MemberJSON(guid, entry, record, ns.Now()), true)
+    local text = Json.Encode(MemberJSON(guid, entry, record, known.crafts[guid], known.builds[guid], ns.Now()), true)
     ShowText(ns.TITLE .. " - " .. ((entry and entry.n) or (record and record.n) or guid), text)
 end
 
 function Export.Init()
-    ns.On("RecordChanged", function(_, record)
-        Warm(record)
-    end)
+    Sources.OnRecordChanged(Sources.BUILDS, Warm)
     -- What was loaded from the saved file, a little after the login.
     C_Timer.After(20, function()
-        for _, guild in pairs(ns.db.guilds) do
-            for _, record in pairs(guild.members) do
+        for guildKey in pairs(ns.db.guilds) do
+            for _, record in pairs(Sources.Records(Sources.BUILDS, guildKey)) do
                 Warm(record)
             end
         end

@@ -85,8 +85,20 @@ also accept every other Lua 5.1 escape.
 
 ## How the data gets there
 
-- Each member with the addon shares their own characters with the guild
-  through hidden game messages.
+- Each member's data comes from the guild addon that shares it, through
+  hidden game messages; the CurseForge app installs them all with Bot'tar
+  Sync:
+  - **Bot'tar Sync**: the character (realm, level, class, race, sex,
+    faction).
+  - **Guild Professions & Recipes**: professions and recipes.
+  - **Guild Builds**: talents, the items worn and the item level. Each member
+    chooses what it shares, for each spec group (the boxes at the bottom of
+    their talent window): "Share talents", off until they tick it, and
+    "Share gear", on until they untick it. Without the talents, a spec still
+    comes with its points per tab; without the gear, there are no items worn
+    nor item level.
+- A member who runs only some of these addons has only that part in the
+  file; the admin's client needs all three to write all of it.
 - When a client logs in, whoever is online sends it what it is missing. So the
   admin also gets the data of members they never see online, as long as
   someone with the addon is online when the admin logs in.
@@ -151,13 +163,13 @@ space ("First Last") and no realm.
 | `note` | text or `null` | The public note from the guild roster. The officer note is never exported. |
 | `online` | boolean or `null` | Online when the roster was read. |
 | `lastOnline` | number or `null` | Last time online (Unix). The game only gives how long ago in years, months, days and hours, so it is **approximate** (to the hour). When online, it equals `generatedAt`. |
-| `hasAddon` | boolean | Whether there is addon data for this character. When `false`, everything below is `null`. |
-| `updatedAt` | number or `null` | Last change to their addon data (Unix). |
-| `addonVersion` | text or `null` | The version of the addon they use. |
-| `itemLevel` | number or `null` | Average item level of the equipped items, with decimals. |
-| `professions` | list or `null` | See below. |
-| `talents` | object or `null` | See below. `null` until they could be read, e.g. for characters that have no talents yet. |
-| `equipment` | list or `null` | See below. |
+| `hasAddon` | boolean | Whether the character runs Bot'tar Sync. When `false`, `realm`, `race`, `sex`, `faction`, `updatedAt` and `addonVersion` are `null`. |
+| `updatedAt` | number or `null` | Last change to their Bot'tar Sync data (Unix). |
+| `addonVersion` | text or `null` | The version of Bot'tar Sync they use. |
+| `itemLevel` | number or `null` | Average item level of the equipped items, with decimals. From Guild Builds, while they share their gear. |
+| `professions` | list or `null` | See below. From Guild Professions & Recipes. |
+| `talents` | object or `null` | See below. From Guild Builds; `null` until they could be read, e.g. for characters that have no talents yet. |
+| `equipment` | list or `null` | See below. From Guild Builds, while they share their gear. |
 
 ### Profession (`professions[]`)
 
@@ -176,7 +188,7 @@ In the character sheet's order: main professions, first aid, fishing, cooking.
 |---|---|---|
 | `activeSpec` | number | The active spec (1 or 2, with dual spec). |
 | `specCount` | number | How many specs the character has (1 or 2). |
-| `unspentPoints` | number | Points not spent. |
+| `unspentPoints` | number or `null` | Points not spent; `null` when not known (members on Guild Builds 0.1). |
 | `treeId` | number or `null` | ID of the class's talent tree. |
 | `specs` | list | One entry per spec. |
 
@@ -186,9 +198,10 @@ Each `specs[]`:
 |---|---|---|
 | `group` | number | 1 or 2. |
 | `active` | boolean | Whether it is the active one. |
+| `shared` | boolean | Whether the member shares this spec's talents. When `false`, `talents` is empty: only the points per tab are known. |
 | `summary` | text | Points per tab, e.g. `"31/20/0"`. |
 | `tabs` | list | The tabs in order: `index`, `name` and `pointsSpent`. |
-| `talents` | list | Only **learned** talents, sorted by tab, row and column. |
+| `talents` | list | Only **learned** talents, sorted by tab, row and column. Empty when the spec is not shared, or when the admin's client could not read the build (made by another version of the game). |
 
 Each talent: `tab` (tab number), `tabName`, `row` and `column` (from 1),
 `name`, `spellId`, `nodeId`, `rank`, `maxRank`, and `posX`/`posY` (position in
@@ -269,6 +282,7 @@ Alice's second spec is cut short.
               {
                 "group": 1,
                 "active": true,
+                "shared": true,
                 "summary": "5/5/0",
                 "tabs": [
                   { "index": 1, "name": "Beast Mastery", "pointsSpent": 5 },
@@ -288,7 +302,7 @@ Alice's second spec is cut short.
                   }
                 ]
               },
-              { "group": 2, "active": false, "summary": "0/0/5", "tabs": ["..."], "talents": ["..."] }
+              { "group": 2, "active": false, "shared": false, "summary": "0/0/5", "tabs": ["..."], "talents": [] }
             ]
           },
           "equipment": [

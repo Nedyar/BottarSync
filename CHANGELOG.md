@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0 - Each addon shares its own part
+
+- **Bot'tar Sync shares the character alone**: name, realm, level, class, race, sex and faction. Professions and recipes are Guild Professions & Recipes' to share, and talents, the items worn and the item level Guild Builds' (0.2 or later), so nothing travels twice.
+- **The file for the bot still has all of it**: Bot'tar Sync reads each member's part from those addons when it writes the file, in the same format. Talents come from the builds each member shares in Guild Builds ("Share talents" at the bottom of the talent window): a spec not shared has its points per tab and no talents, and a new field, `shared`, says which. Items worn and item level follow Guild Builds' "Share gear".
+- Members on 0.3 and this version keep sharing their characters. What 0.3 still sends besides is left out. The admin who writes the file needs this version, with the other addons on, and LibGuildSync 0.3 or later.
+- `/bottar status` says when one of those addons is off or missing.
+
 ## 0.3.1 - Guild Builds comes along too
 
 - **Brings Guild Builds**, the guild's talent builds and gear sets in the guild roster: the CurseForge app now installs it with Bot'tar Sync, together with the guild's other addons. Bot'tar Sync still runs without it and does not read its data.

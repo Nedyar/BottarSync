@@ -4,11 +4,16 @@
 
 An addon for WoW Forever (the `_forever_` client, 1.60.x) that shares the
 characters of every guild member with the addon, and writes the whole guild
-into a file for the guild's Discord bot, Bot'tar.
+into a file for the guild's Discord bot, Bot'tar, together with what the
+guild's other addons share.
 
-- **Every character.** Each client reads its own character: name, realm, level,
-  class, race, sex, faction, item level, equipped items, professions with
-  their recipes, and talents (both specs with dual spec).
+- **Every character.** Each client reads its own character: name, realm,
+  level, class, race, sex and faction.
+- **What the other addons share goes into the file too.** Each guild addon
+  shares its own part, and Bot'tar Sync reads it from them when it writes
+  the file: professions and recipes from Guild Professions & Recipes;
+  talents (both specs with dual spec), the items worn and the item level
+  from Guild Builds, as each member chooses to share them there.
 - **Automatic sharing.** The data goes to the rest of the guild through hidden
   addon messages, which never appear in any chat window. When you log in, a
   guild member who is online sends you whatever you are missing, so as long as
@@ -31,8 +36,9 @@ into a file for the guild's Discord bot, Bot'tar.
   own. The guild also uses KinFolk, a guild hub addon by another author.
   The CurseForge app installs all four with Bot'tar Sync, so a
   guild member only needs this one. In game Bot'tar Sync loads after them,
-  but runs without them (a member who turns one off keeps sharing their
-  characters), and does not read their data yet.
+  but runs without them: a member who turns one off keeps sharing their
+  characters, and a file written without one goes without its part
+  (`/bottar status` says so).
 - **Between the guild window and KinFolk.** With KinFolk on, the game's guild
   window gets a button with KinFolk's logo, left of its minimize and close
   buttons, that opens and closes KinFolk; KinFolk's window gets a button with
@@ -69,23 +75,27 @@ into a file for the guild's Discord bot, Bot'tar.
 
 ## What is shared
 
-Everything listed above goes to every guild member who runs the addon. The
-roster data (rank, public note, last time online) is read by each client from
-the game, as the guild window shows it; officer notes are never exported.
+The character goes to every guild member who runs the addon; what the other
+addons share follows their own settings. The roster data (rank, public note,
+last time online) is read by each client from the game, as the guild window
+shows it; officer notes are never exported.
 
 ## Tests
 
 The tests run outside the game with Lua 5.1, from the addon folder, with
-LibGuildSync's folder next to it (its harness and its files are used):
+the folders of LibGuildSync (its harness and its files are used), Guild
+Professions & Recipes and Guild Builds next to it (the simulated clients run
+them too):
 
 ```
 lua5.1 Tests\run.lua . Tests
 ```
 
-They load LibGuildSync's and the addon's real files into simulated clients
-that talk through a simulated server, and check the sync, the saved data,
-the JSON and, when Node.js is installed, the bot's reader on files written
-the way the game writes them. Another checks the KinFolk buttons and key
+They load the real files of LibGuildSync, of the two addons and of this one
+into simulated clients that talk through a simulated server, and check the
+sync, the saved data, the JSON (with the builds read from the game's import
+strings, which the tests make in the game's format) and, when Node.js is
+installed, the bot's reader on files written the way the game writes them. Another checks the KinFolk buttons and key
 against a stand-in for KinFolk's public pieces. One test puts members on the last release
 (taken from its git tag) in the same guild as members on this version.
 

@@ -14,10 +14,7 @@ local world = H.NewWorld({ seed = 1 })
 local solo = world:NewClient("Solo Name", {
     talents = H.DeepCopy(HUNTER_TALENTS),
     itemLevel = 52.375,
-    gear = {
-        [1] = { link = "|cffa335ee|Hitem:16939:1503:0:0:0:0:0:123456:60:0:0:0:0|h[Dragonstalker's Helm]|h|r", il = 76 },
-        [18] = { link = "|cff1eff00|Hitem:15287:0:0:0:0:0:1197:654321:60:0:0:0:0|h[Crusader Bow of the Monkey]|h|r", il = 61 },
-    },
+    gear = { [1] = { link = "|cffa335ee|Hitem:16939:1503:0:0:0:0:0:123456:60:0:0:0:0|h[Dragonstalker's Helm]|h|r", il = 76 } },
     professions = { { sl = 165, r = 300, m = 300, spell = 10662, hasRecipes = true } },
 })
 world:Login(solo)
@@ -31,36 +28,33 @@ H.eq(#world.errors, 0, "no errors while loading and starting")
 for _, err in ipairs(world.errors) do
     print("   " .. err)
 end
+H.check(ns.Sources.Has("GuildProfessionsRecipes") and ns.Sources.Has("GuildBuilds"), "the other addons' data can be read")
+H.eq(ns.Sources.Title("GuildBuilds"), "Guild Builds", "with their titles")
+H.check(not ns.Sources.Has("NoSuchAddon") and next(ns.Sources.Records("NoSuchAddon", "Test Guild")) == nil,
+    "an addon that is missing gives nothing")
 
 H.section("Pack: records")
 local GUID = "Player-1-0000000A"
-local record = {
-    n = "Solo Name", rl = "TestRealm", t = now, av = 100,
-    c = 3, r = 4, sx = 3, f = 1, l = 60, il = 5238,
-    p = {
-        [171] = { r = 150, m = 225, o = 1, lk = 2259, k = { 2330, 2331, 1306126 } },
-        [182] = { r = 200, m = 225, o = 2, lk = 2366, k = false },
-        [185] = { r = 10, m = 75, o = 5 },
-    },
-    g = { { s = 1, i = "item:16939:1503:0:0:0:0:0::::0:0", il = 76 }, { s = 18, i = "item:15287:0:0:0:0:0:-1197::::", il = 61 } },
-    tl = {
-        tr = 773, ag = 1, ng = 2, un = 2,
-        s = {
-            { gr = 1, tb = { { g = 11, n = "Beast Mastery", sp = 10 }, { g = 12, n = "Marksmanship", sp = 6 } },
-              t = { { nd = 101, sp = 40101, r = 5, m = 5, tb = 1, rw = 1, cl = 1, x = 1200, y = -1500 } } },
-            { gr = 2, tb = {}, t = {} },
-        },
-    },
-}
+local record = { n = "Solo Name", rl = "TestRealm", t = now, av = 400, c = 3, r = 4, sx = 3, f = 1, l = 60 }
 local key, back = Pack.ReadRecord(Pack.Reader(Pack.RecordString(GUID, record)))
 H.eq(key, GUID, "record key (the GUID)")
+H.check(back.p ~= nil and next(back.p) == nil and back.g == nil and back.tl == nil and back.il == nil,
+    "no professions, items, talents or item level any more (written empty, for older versions)")
+back.p = nil
 H.check(ns.Same(back, record), "record round trip, every field")
-local noExtras = H.DeepCopy(record)
-noExtras.g, noExtras.tl, noExtras.il, noExtras.rl = nil, nil, nil, nil
-_, back = Pack.ReadRecord(Pack.Reader(Pack.RecordString(GUID, noExtras)))
-H.check(back.g == nil and back.tl == nil and back.il == nil and back.rl == nil, "unknown items, talents, item level and realm stay unknown")
-local _, zero = Pack.ReadRecord(Pack.Reader(Pack.RecordString(GUID, { t = now, p = {}, il = 0 })))
-H.eq(zero.il, 0, "item level 0 is kept apart from unknown")
+-- A record from a version before 0.4, with what other addons share now.
+local legacy = {
+    n = "Old Name", t = now, av = 301, c = 3, r = 4, sx = 3, f = 1, l = 60, il = 5238,
+    p = { [171] = { r = 150, m = 225, o = 1, lk = 2259, k = { 2330, 2331 } }, [182] = { r = 200, m = 225, o = 2, k = false } },
+    g = { { s = 1, i = "item:16939:1503", il = 76 } },
+    tl = { tr = 773, ag = 1, ng = 1, un = 0, s = { { gr = 1, tb = { { g = 11, n = "Beast Mastery", sp = 5 } },
+        t = { { nd = 101, sp = 40101, r = 5, m = 5, tb = 1, rw = 1, cl = 1, x = 1200, y = 1500 } } } } },
+}
+key, back = Pack.ReadRecord(Pack.Reader(Pack.RecordString(GUID, legacy)))
+H.check(back.p[171] ~= nil and back.tl ~= nil, "a record from before 0.4 still reads")
+local clean = Data.CleanRecord(back, now)
+H.check(clean ~= nil and clean.c == 3 and clean.l == 60, "and passes, as a character")
+H.check(clean.p == nil and clean.g == nil and clean.tl == nil and clean.il == nil, "without what other addons share now")
 
 -- A later version's extra fields are skipped, and the next record still reads.
 local body = Pack.RecordString(GUID, record)
@@ -68,7 +62,7 @@ local reader = Pack.Reader(body)
 local length = reader:UInt()
 local longer = Pack.Writer()
 longer:Str(body:sub(reader.pos, reader.pos + length - 1) .. "\1\2\3")
-longer:Raw(Pack.RecordString("Player-1-0000000B", noExtras))
+longer:Raw(Pack.RecordString("Player-1-0000000B", record))
 reader = Pack.Reader(longer:Result())
 key = Pack.ReadRecord(reader)
 H.eq(key, GUID, "a record with fields from a later version reads")
@@ -80,55 +74,36 @@ H.check(not pcall(Pack.ReadRecord, Pack.Reader(huge:Result() .. ("x"):rep(30000)
 
 H.section("Data: checking records")
 H.check(Data.CleanRecord(record) ~= nil, "a good record passes")
-local function Broken(change)
-    local copy = H.DeepCopy(record)
-    change(copy)
-    return Data.CleanRecord(copy, now) == nil
-end
-H.check(Broken(function(r) r.t = now + 3600 end), "record from the future refused")
-H.check(Broken(function(r) r.p = "x" end), "bad professions refused")
-H.check(Broken(function(r) r.g[1].i = "|Hitem:1|h" end), "item string with escapes refused")
-H.check(Broken(function(r) r.g[2].s = 1 end), "two items in one slot refused")
-H.check(Broken(function(r) r.tl.s[1].t[1].r = -1 end), "bad talent rank refused")
-H.check(Broken(function(r) r.tl.s[1].t[1].nd = "x" end), "bad talent node refused")
+H.eq(Data.CleanRecord({ t = now + 3600 }, now), nil, "a record from the future is refused")
 local copy = H.DeepCopy(record)
 copy.n = "Evil|cffff0000Name"
-copy.tl.s[1].tb[1].n = "Tab|r"
-local clean = Data.CleanRecord(copy, now)
-H.eq(clean.n, "Evilcffff0000Name", "escape sequences stripped from names")
-H.eq(clean.tl.s[1].tb[1].n, "Tabr", "escape sequences stripped from tab names")
-
-H.section("Data: merging")
-local guild = { members = {} }
-local function Rec(t, extra)
-    local r = { t = t, p = { [171] = { r = 1, m = 75, o = 1 } } }
-    for k, v in pairs(extra or {}) do
-        r[k] = v
-    end
-    return r
-end
-Data.MergeRecord(guild, GUID, Rec(now - 100, { g = { { s = 1, i = "item:1", il = 1 } } }), false)
-H.check(not Data.MergeRecord(guild, GUID, Rec(now - 200), false), "an older copy loses")
-Data.MergeRecord(guild, GUID, Rec(now - 50), true)
-H.eq(guild.members[GUID].t, now - 50, "a newer copy wins")
-H.check(guild.members[GUID].g ~= nil, "it keeps the items the older copy knew")
-guild.members[GUID].tl = nil
-H.check(Data.MergeRecord(guild, GUID, Rec(now - 60, { tl = record.tl }), false), "an older copy can still give the talents")
-H.check(guild.members[GUID].tl ~= nil and guild.members[GUID].t == now - 50, "talents taken, newer copy kept")
+H.eq(Data.CleanRecord(copy, now).n, "Evilcffff0000Name", "escape sequences stripped from names")
+copy.c, copy.l = "x", -1
+clean = Data.CleanRecord(copy, now)
+H.check(clean.c == 0 and clean.l == 0, "odd numbers become unknown")
+H.check(H.SameList({ Data.Stats(clean) }, { 0, 0, 0 }) and Data.STATS == 3,
+    "three stats, as versions before 0.4 send, all 0")
 
 H.section("Data: saved form")
 local db = ns.db
 local savedGuild = Data.GetGuild("Test Guild", true)
 savedGuild.members[GUID] = Data.CleanRecord(record)
-Data.SetCatalog(171, { 2330, 2331, 2332 })
 local packed = H.DeepCopy(db)
+packed.cache = { catalog = { [171] = "AAAA" } }
+for _, state in pairs(packed.own) do
+    state.hinted = { [171] = true }
+end
 Data.PackForSave(packed)
 H.eq(type(packed.guilds["Test Guild"].members[GUID].b), "string", "records are saved packed")
 local loaded = Data.Sanitize(packed)
-H.check(ns.Same(loaded.guilds["Test Guild"].members[GUID].tl, record.tl), "talents survive saving")
-H.check(ns.Same(loaded.guilds["Test Guild"].members[GUID].g, record.g), "items survive saving")
-H.check(H.SameList(loaded.cache.catalog[171], { 2330, 2331, 2332 }), "catalogs survive saving")
+H.eq(loaded.guilds["Test Guild"].members[GUID].c, 3, "and come back")
 H.check(loaded.guilds["Test Guild"].roster ~= nil and next(loaded.guilds["Test Guild"].roster.m) ~= nil, "the roster survives saving")
+H.eq(loaded.cache, nil, "the catalogs of versions before 0.4 are dropped")
+local hinted = false
+for _, state in pairs(loaded.own) do
+    hinted = hinted or state.hinted ~= nil
+end
+H.check(not hinted, "and so are their profession hints")
 local garbage = H.DeepCopy(packed)
 garbage.guilds["Test Guild"].members[GUID] = { b = "!!!" }
 garbage.guilds["Test Guild"].members["Player-1-0000000F"] = packed.guilds["Test Guild"].members[GUID]
@@ -136,6 +111,156 @@ loaded = Data.Sanitize(garbage)
 H.check(loaded.guilds["Test Guild"].members[GUID] == nil, "an unreadable saved record is dropped")
 H.check(loaded.guilds["Test Guild"].members["Player-1-0000000F"] == nil, "a record saved under another GUID is dropped")
 H.check(next(Data.Sanitize("nonsense").guilds) == nil, "a broken database starts empty")
+savedGuild.members[GUID] = nil
+
+H.section("Data: professions of Guild Professions & Recipes")
+local sorted = Data.SortedProfessions({
+    [185] = { r = 10, m = 75, o = 5 }, [171] = { r = 150, m = 225, o = 1, lk = 2259, k = { 2330 } },
+    [182] = { r = 200, m = 225, o = 2, k = false }, [999] = "odd", [0] = { r = 1, m = 1 },
+})
+H.eq(#sorted, 3, "only what is usable")
+H.check(sorted[1].sl == 171 and sorted[2].sl == 182 and sorted[3].sl == 185, "in the character sheet's order")
+H.check(type(sorted[1].k) == "table" and sorted[2].k == false and sorted[3].k == nil, "recipes, none, or not read yet")
+H.eq(#Data.SortedProfessions(nil), 0, "nothing without professions")
+
+
+H.section("Character: own record")
+local own = Data.GetOwnRecord(false)
+H.check(own ~= nil and Data.IsShareable(own), "own record stamped")
+H.eq(own.l, 60, "level")
+H.eq(own.c, 3, "class ID")
+H.eq(own.r, 4, "race ID")
+H.eq(own.sx, 3, "sex")
+H.eq(own.f, 1, "faction")
+H.eq(own.rl, "TestRealm", "realm")
+H.check(own.p == nil and own.g == nil and own.tl == nil and own.il == nil,
+    "nothing that other addons share: professions, items, talents, item level")
+solo.level = 61
+world:FireEvent(solo, "PLAYER_LEVEL_UP", 62)
+world:RunFor(3)
+H.eq(Data.GetOwnRecord(false).l, 62, "the level from PLAYER_LEVEL_UP, ahead of UnitLevel")
+
+-- A character whose saved record came from a version before 0.4.
+local old = world:NewClient("Old Timer", { talents = H.DeepCopy(HUNTER_TALENTS) })
+local oldRecord = H.DeepCopy(legacy)
+oldRecord.n, oldRecord.t, oldRecord.av = "Old Timer", now - 1000, 205
+old.saved = { BottarSyncDB = { schema = 1, guilds = { ["Test Guild"] = { seen = now, members = {
+    [old.guid] = { b = Pack.ToBase64(Pack.RecordString(old.guid, oldRecord)), fh = true },
+} } } } }
+world:Login(old)
+world:RunFor(10)
+local renewed = old.ns.Data.GetOwnRecord(false)
+H.check(renewed ~= nil and renewed.p == nil and renewed.tl == nil and renewed.g == nil, "its old fields are gone")
+H.check(renewed.t > now - 1000 and renewed.av == old.ns.VERSION_NUM, "and it is shared again, with this version")
+H.eq(#world.errors, 0, "no errors")
+
+H.section("TalentTree: build strings")
+local Tree = ns.TalentTree
+local text = H.EncodeBuild(255, { [101] = 5, [102] = 3, [303] = 1 })
+local build = Tree.Decode(text, 14)
+H.check(build ~= nil, "a build string reads")
+H.check(build.version == H.LOADOUT_VERSION and build.specID == 255, "its header: version and spec")
+H.check(H.SameList(build.hash, H.TreeHash(H.TREE)), "and the tree's hash")
+H.check(build.nodes[1].selected and not build.nodes[1].granted and build.nodes[1].ranks == nil, "a talent with all its ranks")
+H.check(build.nodes[2].selected and build.nodes[2].ranks == 3, "a talent with some")
+H.check(not build.nodes[3].selected, "a talent not learned")
+H.check(build.nodes[13].selected and build.nodes[13].ranks == 1, "the last talent of the tree")
+H.check(not build.nodes[14].selected, "and a hidden node")
+build = Tree.Decode(H.EncodeBuild(255, { [102] = 2 }, { granted = { [101] = true }, choices = { [102] = 3 } }), 14)
+H.check(build.nodes[1].selected and build.nodes[1].granted, "a granted node")
+H.check(build.nodes[2].choice == 3 and build.nodes[2].ranks == 2, "a choice node, with the entry chosen")
+H.eq(Tree.Decode(text, 40), nil, "a string too short for the tree")
+H.eq(Tree.Decode("ab!d" .. text, 14), nil, "anything that is not Base64")
+H.eq(Tree.Decode("AAAA", 1), nil, "no room for the header")
+
+H.section("TalentTree: our own class's builds")
+local builds = solo.namespaces.GuildBuilds
+builds.Talents.SetShared(1, true)
+builds.Talents.SetShared(2, true)
+world:RunFor(3)
+local Records = ns.Sources.Records
+local mine = Records("GuildBuilds", "Test Guild")[solo.guid]
+H.check(mine ~= nil and mine.s[1].x ~= nil, "Guild Builds shares the builds")
+local talents = Tree.Talents(mine)
+H.check(talents ~= nil, "read from its record")
+H.check(talents.tr == 773 and talents.ag == 1 and talents.ng == 2 and talents.un == 2, "tree, active spec, specs and unspent points")
+local spec = talents.s[1]
+H.check(spec.shared and #spec.tb == 3, "a shared build with its three tabs")
+H.check(spec.tb[1].n == "Beast Mastery" and spec.tb[1].sp == 10 and spec.tb[2].sp == 6 and spec.tb[3].sp == 0, "names and points")
+H.eq(#spec.t, 5, "only learned talents, and no hidden node")
+local expected = { [101] = { 1, 1, 1 }, [102] = { 1, 1, 2 }, [103] = { 1, 2, 1 }, [201] = { 2, 1, 2 }, [205] = { 2, 4, 4 } }
+for _, talent in ipairs(spec.t) do
+    local want = expected[talent.nd]
+    H.check(want and talent.tb == want[1] and talent.rw == want[2] and talent.cl == want[3],
+        ("talent %d in tab %d, row %d, column %d"):format(talent.nd, talent.tb, talent.rw, talent.cl))
+    H.eq(talent.sp, 40000 + talent.nd, "spell of talent " .. talent.nd)
+end
+H.check(spec.t[1].nd == 101 and spec.t[5].nd == 205, "by tab, row and column")
+H.check(spec.t[1].r == 5 and spec.t[2].r == 3 and spec.t[2].m == 5, "ranks and max ranks")
+H.check(talents.s[2].gr == 2 and #talents.s[2].t == 1 and talents.s[2].tb[3].sp == 5, "the second spec")
+H.eq(#solo.viewLoadouts, 0, "our own class's tree needs no view config")
+builds.Talents.SetShared(2, false)
+world:RunFor(3)
+talents = Tree.Talents(Records("GuildBuilds", "Test Guild")[solo.guid])
+H.check(not talents.s[2].shared and #talents.s[2].t == 0 and talents.s[2].tb[3].sp == 5, "a build not shared: points, no talents")
+
+H.section("TalentTree: another class's builds")
+local mage = world:NewClient("Mage Name", { classID = 8, talents = { active = 1, groups = { [1] = { [1101] = 5, [1103] = 2, [1302] = 3 } } } })
+world:Login(mage)
+world:RunFor(5)
+mage.namespaces.GuildBuilds.Talents.SetShared(1, true)
+world:RunUntil(function()
+    local copy = Records("GuildBuilds", "Test Guild")[mage.guid]
+    return copy ~= nil and copy.s ~= nil and copy.s[1].x ~= nil
+end, 180)
+local mageTalents = Tree.Talents(Records("GuildBuilds", "Test Guild")[mage.guid])
+H.check(mageTalents ~= nil and mageTalents.tr == 774, "a mage's build, read by a hunter")
+spec = mageTalents and mageTalents.s[1]
+H.check(spec and spec.tb[1].n == "Arcane" and spec.tb[3].n == "Frost", "with the mage's tab names")
+H.check(spec and #spec.t == 3 and spec.t[1].nd == 1101 and spec.t[2].nd == 1103 and spec.t[3].nd == 1302, "and talents")
+H.check(spec and spec.t[2].rw == 2 and spec.t[2].cl == 2 and spec.t[3].tb == 3 and spec.t[3].cl == 3, "rows and columns")
+H.check(#solo.viewLoadouts == 1 and solo.viewLoadouts[1].specID == 62, "through the view config, set up for the mage's spec")
+Tree.Talents(Records("GuildBuilds", "Test Guild")[mage.guid])
+H.eq(#solo.viewLoadouts, 1, "once a session")
+H.eq(#world.errors, 0, "no errors")
+
+H.section("TalentTree: builds this client cannot read")
+local MAGE_TABS = { { g = 21, i = 1 }, { g = 22, i = 2 }, { g = 23, i = 3 } }
+local function MageRecord(x)
+    return { t = now, tr = 774, ag = 1, lv = 60, tb = MAGE_TABS, s = { { gr = 1, x = x, p = { 5, 0, 3 } } } }
+end
+local readable = MageRecord(H.EncodeBuild(62, { [1101] = 5 }))
+H.eq(#Tree.Talents(readable).s[1].t, 1, "a mage's build reads")
+local other = Tree.Talents(MageRecord(H.EncodeBuild(62, { [1101] = 5 }, { version = 9 })))
+H.check(other.s[1].shared and #other.s[1].t == 0 and other.s[1].tb[1].sp == 5,
+    "made by another version of the game: shared, with points, without talents")
+local hash = H.TreeHash(H.MAGE_TREE)
+hash[3] = (hash[3] + 1) % 256
+other = Tree.Talents(MageRecord(H.EncodeBuild(62, { [1101] = 5 }, { hash = hash })))
+H.eq(#other.s[1].t, 0, "made from a tree that has changed since")
+local empty = {}
+for i = 1, 16 do
+    empty[i] = 0
+end
+H.eq(#Tree.Talents(MageRecord(H.EncodeBuild(62, { [1101] = 5 }, { hash = empty }))).s[1].t, 1,
+    "an empty hash is not checked (other sites make strings so)")
+H.eq(#Tree.Talents(MageRecord("!!!")).s[1].t, 0, "a broken string")
+H.eq(Tree.Talents({ t = now }), nil, "no builds, no talents")
+
+-- Another client, with the talent window open.
+local viewer = world:NewClient("Viewer Name", { talents = H.DeepCopy(HUNTER_TALENTS) })
+world:Login(viewer)
+world:RunFor(5)
+viewer.env.PlayerSpellsFrame = { IsShown = function()
+    return true
+end }
+local ViewerTree = viewer.ns.TalentTree
+H.eq(#ViewerTree.Talents(readable).s[1].t, 0, "while the talent window is open, another class's tree is not read")
+H.eq(#viewer.viewLoadouts, 0, "so the window is left as it is")
+ViewerTree.loggingOut = true
+H.eq(#ViewerTree.Talents(readable).s[1].t, 1, "at logout it is")
+ViewerTree.loggingOut = false
+H.eq(#world.errors, 0, "no errors")
 
 H.section("Json: values")
 local E = Json.Encode
@@ -165,98 +290,6 @@ for _, pretty in ipairs({ false, true }) do
 end
 H.check(E(nested, true):find("\n  \"list\": [\n    {", 1, true) ~= nil, "pretty output is indented")
 H.eq(H.DecodeJSON(E(unicode)), unicode, "UTF-8 reads back")
-
-H.section("Character: item strings")
-local ItemString = ns.Character.ItemString
-H.eq(ItemString("|cff1eff00|Hitem:15287:0:0:0:0:0:1197:1234567:60:0:0:0:0|h[Crusader Bow of the Monkey]|h|r"),
-    "item:15287:0:0:0:0:0:1197::::0:0:0", "unique ID, level and spec left out")
-H.eq(ItemString("|cffffffff|Hitem:19019::::::::60:::::|h[Thunderfury]|h|r"), "item:19019:::::::::::::", "blank fields kept")
-H.eq(ItemString("|cffffffff|Hitem:1234|h[Short]|h|r"), "item:1234", "a short item string")
-local crafted = ItemString("|cff1eff00|Hitem:4314::::::::19:::::::::Player-4613-010B766A:|h[Double-Stitched Woolen Shoulders]|h|r")
-H.eq(crafted, "item:4314:::::::::::::::::Player-4613-010B766A:", "a crafted item keeps its crafter's GUID")
-H.eq(ItemString("|cffffffff|Hitem:1234:1.5:7|h[Odd]|h|r"), "item:1234::7", "a field with anything else is left blank")
-H.eq(ItemString("|cffffffff|Hitem:abc:1|h[Odd]|h|r"), nil, "no item ID, no item")
-H.eq(ItemString("|cffffffff|Hitem:1234:" .. ("1:"):rep(200) .. "|h[Long]|h|r"), "item:1234", "too long: only the item ID")
-H.check(Data.CleanRecord({ t = now, p = {}, g = { { s = 3, i = crafted, il = 22 } } }, now) ~= nil, "other clients accept crafted items")
-H.eq(ItemString("|cff71d5ff|Hspell:133|h[Fireball]|h|r"), nil, "not an item")
-H.eq(ItemString(nil), nil, "no link")
-
-H.section("Character: own record")
-local own = Data.GetOwnRecord(false)
-H.check(own ~= nil and Data.IsShareable(own), "own record stamped")
-H.eq(own.l, 60, "level")
-H.eq(own.c, 3, "class ID")
-H.eq(own.r, 4, "race ID")
-H.eq(own.sx, 3, "sex")
-H.eq(own.f, 1, "faction")
-H.eq(own.il, 5238, "item level in hundredths")
-H.eq(own.rl, "TestRealm", "realm")
-H.eq(#own.g, 2, "two items equipped")
-H.eq(own.g[1].i, "item:16939:1503:0:0:0:0:0::::0:0:0", "head item string")
-H.eq(own.g[2].s, 18, "ranged slot")
-H.eq(own.g[2].il, 61, "item level of an item")
-solo.gear[1] = nil
-solo.level = 61
-world:FireEvent(solo, "PLAYER_EQUIPMENT_CHANGED", 1, true)
-world:FireEvent(solo, "PLAYER_LEVEL_UP", 62)
-world:RunFor(3)
-own = Data.GetOwnRecord(false)
-H.eq(#own.g, 1, "an item taken off is gone")
-H.eq(own.l, 62, "the level from PLAYER_LEVEL_UP, ahead of UnitLevel")
-
-H.section("Talents")
-local tl = own.tl
-H.check(tl ~= nil, "talents read")
-if tl then
-    H.eq(tl.tr, 773, "tree ID")
-    H.eq(tl.ag, 1, "active spec group")
-    H.eq(tl.ng, 2, "two spec groups")
-    H.eq(tl.un, 2, "unspent points")
-    H.eq(#tl.s, 2, "both specs read")
-    local spec = tl.s[1]
-    H.eq(#spec.tb, 3, "three tabs")
-    H.eq(spec.tb[1].n, "Beast Mastery", "first tab's name")
-    H.eq(spec.tb[1].sp, 10, "points in the first tab")
-    H.eq(spec.tb[2].sp, 6, "points in the second tab")
-    H.eq(spec.tb[3].sp, 0, "points in the third tab")
-    H.eq(#spec.t, 5, "only learned talents, and no hidden node")
-    local expected = { [101] = { 1, 1, 1 }, [102] = { 1, 1, 2 }, [103] = { 1, 2, 1 }, [201] = { 2, 1, 2 }, [205] = { 2, 4, 4 } }
-    for _, talent in ipairs(spec.t) do
-        local want = expected[talent.nd]
-        H.check(want and talent.tb == want[1] and talent.rw == want[2] and talent.cl == want[3],
-            ("talent %d in tab %d, row %d, column %d"):format(talent.nd, talent.tb, talent.rw, talent.cl))
-        H.eq(talent.sp, 40000 + talent.nd, "spell of talent " .. talent.nd)
-    end
-    H.eq(spec.t[1].nd, 101, "talents ordered by tab, row and column")
-    H.eq(spec.t[5].nd, 205, "last talent")
-    H.eq(spec.t[1].r, 5, "rank")
-    H.eq(spec.t[2].m, 5, "max rank")
-    H.eq(tl.s[2].gr, 2, "second spec's group")
-    H.eq(#tl.s[2].t, 1, "second spec's talents")
-    H.eq(tl.s[2].tb[3].sp, 5, "second spec's points")
-end
-local before = own.t
-solo.talents.staged = true
-solo.talents.groups[1][104] = 1
-world:FireEvent(solo, "TRAIT_CONFIG_UPDATED", 501)
-world:RunFor(3)
-H.eq(Data.GetOwnRecord(false).t, before, "talents not applied yet are not shared")
-solo.talents.staged = false
-world:FireEvent(solo, "TRAIT_CONFIG_UPDATED", 501)
-world:RunFor(3)
-H.eq(#Data.GetOwnRecord(false).tl.s[1].t, 6, "applied talents are")
-solo.talents.active = 2
-world:FireEvent(solo, "ACTIVE_TALENT_GROUP_CHANGED", 2, 1)
-world:RunFor(3)
-H.eq(Data.GetOwnRecord(false).tl.ag, 2, "switching specs is noticed")
-
--- A character without talents yet (no config) leaves them unknown.
-local fresh = world:NewClient("Fresh Face", { level = 5 })
-world:Login(fresh)
-world:RunFor(5)
-local freshRecord = fresh.ns.Data.GetOwnRecord(false)
-H.check(freshRecord ~= nil and freshRecord.tl == nil, "no talent config: talents unknown")
-H.eq(fresh.ns.Talents.lastError, "no talent config yet", "and the reason is noted")
 
 H.section("Locales")
 local function ReadKeys(path)

@@ -1,5 +1,6 @@
 -- Bot'tar Sync: shares every guild member's characters with the guild and
--- writes them, as JSON, into the saved variables file for the Bot'tar bot.
+-- writes them, as JSON, into the saved variables file for the Bot'tar bot,
+-- together with what the guild's other addons share (Sources.lua).
 --
 -- The addon messages, the guild roster, the saved database and the sync
 -- are LibGuildSync's (a separate addon this one depends on), attached
@@ -29,7 +30,7 @@ end
 
 -- Our own character has been read, so what we announce is current.
 function ns.Sync.OwnReady()
-    return ns.Character.ready and ns.Professions.ready
+    return ns.Character.ready
 end
 
 -- Professions ----------------------------------------------------------------
@@ -68,7 +69,7 @@ events:SetScript("OnEvent", function(self, event, name)
         Lib.Start(ns)
         -- Each part starts on its own, so a failure in one (reported as a normal
         -- Lua error) does not stop the others.
-        for _, init in ipairs({ ns.Character.Init, ns.Professions.Init, ns.Talents.Init, ns.Export.Init, ns.KinFolk.Init }) do
+        for _, init in ipairs({ ns.Character.Init, ns.Export.Init, ns.KinFolk.Init }) do
             xpcall(init, geterrorhandler())
         end
     end
@@ -102,19 +103,9 @@ local function PrintStatus()
         ns.Print(L["guild %s: data on %d |4character:characters; with the addon, %d |4member:members; in the roster."], guildKey, count, ns.Roster.total)
     end
 
-    local own = ns.Data.GetOwnRecord(false)
-    if own then
-        local missing = {}
-        for _, prof in ipairs(ns.Data.SortedProfessions(own)) do
-            if prof.k == nil then
-                missing[#missing + 1] = ns.ProfessionName(prof.sl, prof.lk) or ("#" .. prof.sl)
-            end
-        end
-        if #missing > 0 then
-            ns.Print(L["recipes not read yet: open %s once."], table.concat(missing, ", "))
-        end
-        if not own.tl then
-            ns.Print(L["talents not read yet."])
+    for _, addonName in ipairs({ ns.Sources.PROFESSIONS, ns.Sources.BUILDS }) do
+        if not ns.Sources.Has(addonName) then
+            ns.Print(L["%s is turned off or not installed: the file for the bot goes without its data."], ns.Sources.Title(addonName))
         end
     end
     ns.Print(L["sync: %s"], ns.Sync.Describe())

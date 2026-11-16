@@ -18,6 +18,12 @@ end
 
 local NULL = H.NULL
 
+-- A client's copy of another's record, in one of the addons it runs.
+local function CopyIn(client, addonName, other)
+    local guild = client.namespaces[addonName].Data.GetGuild("Test Guild")
+    return guild and guild.members[other.guid]
+end
+
 local world = H.NewWorld({ seed = 3, senderFormat = "short", strictWhispers = true })
 local alice = world:NewClient("Alice Smith", {
     professions = { { sl = 165, r = 300, m = 300, spell = 10662, hasRecipes = true }, { sl = 393, r = 275, m = 300, spell = 10768, hasRecipes = false } },
@@ -35,11 +41,15 @@ world:AddMember("Erin Gray", nil, { class = "ROGUE", level = 60 })
 world:Login(alice)
 world:RunFor(5)
 world:OpenProfession(alice, 165, { 1001, 1002, 1003 }, { 1001, 1003 })
+-- Talents go to the guild once their owner shares them (in Guild Builds).
+alice.namespaces.GuildBuilds.Talents.SetShared(1, true)
+alice.namespaces.GuildBuilds.Talents.SetShared(2, true)
 world:Login(carol)
 world:RunUntil(function()
-    local guild = carol.ns.Data.GetGuild("Test Guild")
-    local record = guild and guild.members[alice.guid]
-    return record and record.p[165] and type(record.p[165].k) == "table" and record.tl
+    local crafts = CopyIn(carol, "GuildProfessionsRecipes", alice)
+    local builds = CopyIn(carol, "GuildBuilds", alice)
+    return crafts and crafts.p and crafts.p[165] and type(crafts.p[165].k) == "table"
+        and builds and builds.s and builds.s[2] and builds.s[2].x and builds.w
 end, 300)
 world:RunFor(60)
 Errors(world, "setup")
@@ -61,6 +71,8 @@ H.eq(type(data.generatedAt), "number", "generation time")
 H.check(type(data.generatedAtUtc) == "string" and data.generatedAtUtc:find("^%d%d%d%d%-%d%d%-%d%dT%d%d:%d%d:%d%dZ$") ~= nil, "UTC time in ISO 8601")
 H.eq(data.locale, "enUS", "names are in the exporting client's language")
 H.eq(data.exportedBy.name, "Carol White", "who wrote the file")
+H.eq(type(carol.saved.GuildProfessionsRecipesDB.guilds["Test Guild"].members[alice.guid].p[165].k), "string",
+    "Guild Professions & Recipes had packed its records for saving first")
 H.eq(#data.guilds, 1, "one guild")
 local guild = data.guilds[1]
 H.eq(guild.name, "Test Guild", "guild name")
@@ -116,12 +128,15 @@ local skinning = Find(a.professions, "id", 393)
 H.check(skinning and type(skinning.recipes) == "table" and #skinning.recipes == 0, "a profession without recipes has an empty list")
 
 local talents = a.talents
+H.check(talents ~= NULL, "talents, from Guild Builds")
 H.eq(talents.activeSpec, 1, "active spec")
 H.eq(talents.specCount, 2, "two specs")
 H.eq(talents.unspentPoints, 2, "unspent points")
 H.eq(#talents.specs, 2, "both specs exported")
 local spec = talents.specs[1]
 H.eq(spec.active, true, "first spec active")
+H.eq(spec.shared, true, "and shared")
+H.eq(table.concat(spec._order, ","), "group,active,shared,summary,tabs,talents", "spec fields")
 H.eq(talents.specs[2].active, false, "second spec not")
 H.eq(spec.summary, "10/6/0", "points per tab")
 H.eq(spec.tabs[2].name, "Marksmanship", "tab name")
@@ -135,6 +150,7 @@ H.check(first.row == 1 and first.column == 1, "talent row and column")
 H.eq(first.rank, 5, "talent rank")
 H.eq(first.maxRank, 5, "talent max rank")
 H.eq(talents.specs[2].summary, "0/0/5", "second spec's points")
+H.check(#carol.viewLoadouts >= 1 and carol.viewLoadouts[1].specID == 255, "a mage wrote a hunter's talents, through the view config")
 
 local helm = Find(a.equipment, "slot", 1)
 H.check(helm ~= nil, "head item exported")
@@ -150,6 +166,21 @@ end
 local bow = Find(a.equipment, "slot", 18)
 H.check(bow and bow.slotName == "ranged" and bow.enchantId == NULL, "ranged slot, no enchant")
 
+H.section("Export: a build not shared")
+world:Login(carol)
+world:RunFor(5)
+alice.namespaces.GuildBuilds.Talents.SetShared(2, false)
+world:RunUntil(function()
+    local builds = CopyIn(carol, "GuildBuilds", alice)
+    return builds and builds.s[2] and builds.s[2].x == nil
+end, 180)
+world:Logout(carol)
+local unshared = Find(H.DecodeJSON(carol.saved.BottarSyncJSON).guilds[1].members, "name", "Alice Smith").talents.specs[2]
+H.check(unshared.shared == false and unshared.summary == "0/0/5" and #unshared.talents == 0,
+    "its points, and no talents")
+alice.namespaces.GuildBuilds.Talents.SetShared(2, true)
+Errors(world, "a build not shared")
+
 H.section("Export: members without the addon")
 local d = Find(guild.members, "name", "Dan Brown")
 H.eq(d.hasAddon, false, "no addon")
@@ -164,6 +195,48 @@ for _, field in ipairs({ "realm", "race", "sex", "faction", "updatedAt", "addonV
     H.check(d[field] == NULL, "unknown " .. field .. " is null")
 end
 H.eq(table.concat(d._order, ","), table.concat(a._order, ","), "the same fields as members with the addon")
+
+H.section("Export: members with the other addons only")
+local frank = world:NewClient("Frank Green", {
+    classID = 1,
+    addons = { H.ADDONS[1], H.SOURCES[1], H.SOURCES[2] },
+    talents = { active = 1, groups = { [1] = { [101] = 1 } } },
+    professions = { { sl = 164, r = 120, m = 150, spell = 2018, hasRecipes = true } },
+    gear = { [5] = { link = "|cff1eff00|Hitem:6000::::::::20|h[Chest]|h|r", il = 20 } },
+    itemLevel = 20,
+})
+world:Login(frank)
+world:RunFor(5)
+world:OpenProfession(frank, 164, { 2001, 2002 }, { 2001 })
+world:Login(carol)
+world:RunUntil(function()
+    local crafts = CopyIn(carol, "GuildProfessionsRecipes", frank)
+    local builds = CopyIn(carol, "GuildBuilds", frank)
+    return crafts and crafts.p and crafts.p[164] and type(crafts.p[164].k) == "table" and builds and builds.w
+end, 300)
+world:Logout(carol)
+local f = Find(H.DecodeJSON(carol.saved.BottarSyncJSON).guilds[1].members, "name", "Frank Green")
+H.eq(f.hasAddon, false, "without Bot'tar Sync")
+H.check(f.professions ~= NULL and Find(f.professions, "id", 164) ~= nil, "their professions, from Guild Professions & Recipes")
+H.check(f.equipment ~= NULL and Find(f.equipment, "slot", 5) ~= nil and f.itemLevel == 20, "their items and item level, from Guild Builds")
+H.check(f.talents ~= NULL and f.talents.specs[1].shared == false, "their builds, not shared")
+H.check(f.race == NULL and f.sex == NULL, "but not what only Bot'tar Sync shares")
+world:Logout(frank)
+Errors(world, "other addons only")
+
+H.section("Export: without the other addons")
+local gina = world:NewClient("Gina Black", { classID = 5, addons = { H.ADDONS[1], H.MAIN } })
+world:Login(gina)
+world:RunFor(150)
+gina.env.SlashCmdList.BOTTARSYNC("status")
+local said = table.concat(gina.printed, "\n")
+local _, missing = said:gsub("is turned off or not installed: the file for the bot goes without its data", "")
+H.eq(missing, 2, "the status says what is missing")
+world:Logout(gina)
+local g = Find(H.DecodeJSON(gina.saved.BottarSyncJSON).guilds[1].members, "name", "Alice Smith")
+H.check(g ~= nil and g.hasAddon == true and g.class.id == 3, "the file still has the members")
+H.check(g.professions == NULL and g.talents == NULL and g.equipment == NULL and g.itemLevel == NULL, "without the other addons' data")
+Errors(world, "without the other addons")
 
 H.section("Export: turned off")
 world:Login(carol)
@@ -198,6 +271,7 @@ Errors(world, "show")
 H.section("Export: a large guild")
 local ns = carol.ns
 local bigGuild = ns.Data.GetGuild("Big Guild", true)
+local bigCrafts = carol.namespaces.GuildProfessionsRecipes.Data.GetGuild("Big Guild", true)
 local template = ns.Data.GetGuild("Test Guild").members[alice.guid]
 bigGuild.roster = { t = ns.Now(), m = {} }
 local recipes = {}
@@ -210,8 +284,11 @@ for i = 1, 900 do
     if i <= 60 then
         local record = H.DeepCopy(template)
         record.n = "Member " .. i
-        record.p = { [165] = { r = 300, m = 300, o = 1, k = recipes }, [171] = { r = 300, m = 300, o = 2, k = recipes } }
         bigGuild.members[guid] = record
+        bigCrafts.members[guid] = {
+            n = record.n, t = record.t, av = 1100,
+            p = { [165] = { r = 300, m = 300, o = 1, k = recipes }, [171] = { r = 300, m = 300, o = 2, k = recipes } },
+        }
     end
 end
 local started = os.clock()
@@ -221,9 +298,11 @@ local bigData = H.DecodeJSON(big)
 local bigExport = Find(bigData.guilds, "name", "Big Guild")
 H.eq(bigExport.memberCount, 900, "900 members exported")
 H.eq(bigExport.membersWithAddon, 60, "60 with the addon")
+H.eq(#Find(bigExport.members, "name", "Member 7").professions[1].recipes, 300, "their recipes")
 print(("   (%d KB of JSON in %.0f ms here)"):format(#big / 1024, elapsed * 1000))
 H.check(elapsed < 5, "built in reasonable time")
 ns.db.guilds["Big Guild"] = nil
+carol.namespaces.GuildProfessionsRecipes.db.guilds["Big Guild"] = nil
 
 H.section("Export: the bot's reader")
 -- The saved variables file as the game writes it, read by Bot/bottarsync.js.
