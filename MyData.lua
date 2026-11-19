@@ -167,7 +167,10 @@ local function CreateWindow()
     window:SetMovable(true)
     window:EnableMouse(true)
     window:RegisterForDrag("LeftButton")
-    window:SetScript("OnDragStart", window.StartMoving)
+    window:SetScript("OnDragStart", function(self)
+        self.docked = false
+        self:StartMoving()
+    end)
     window:SetScript("OnDragStop", window.StopMovingOrSizing)
     window:Hide()
     tinsert(UISpecialFrames, window:GetName())
@@ -243,12 +246,24 @@ function MyData.Toggle()
     end
     Draw()
     window:ClearAllPoints()
-    if CommunitiesFrame and CommunitiesFrame:IsShown() then
-        window:SetPoint("TOPLEFT", CommunitiesFrame, "TOPRIGHT", 10, 0)
-    else
-        window:SetPoint("CENTER")
-    end
+    window:SetPoint("CENTER")
+    window.docked = true
     window:Show()
+    MyData.Place()
+end
+
+-- Places the window beside the guild window, or beside the Statistics
+-- window while it shows (Stats.lua); not once the player moved it.
+function MyData.Place()
+    if not (window and window:IsShown() and window.docked) then
+        return
+    end
+    local stats = ns.Stats.IsShown() and ns.Stats.Window()
+    local beside = stats or (CommunitiesFrame and CommunitiesFrame:IsShown() and CommunitiesFrame)
+    if beside then
+        window:ClearAllPoints()
+        window:SetPoint("TOPLEFT", beside, "TOPRIGHT", 10, 0)
+    end
 end
 
 function MyData.Window()

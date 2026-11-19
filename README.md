@@ -19,6 +19,16 @@ guild's other addons share.
   name and the mains belong to the WoW account: every character of the
   account carries them, and characters on another account that go by the
   same Discord name count as the same player.
+- **Filters and numbers on the guild roster.** On the guild window's Roster
+  tab, three boxes right of Offline members choose what the list shows:
+  Mains and Alts (ticked at first) and Banks (bank characters, by Guild
+  Bank Alts' bank ranks). Members without Bot'tar Sync count as mains. A
+  **Statistics** button left of Offline members opens a window beside the
+  guild window: how many mains, alts and bank characters there are, a bar
+  of the classes (and of the chosen class's specializations, from Guild
+  Builds) and the members by level. A click on any of them filters the
+  roster. A member's tooltip in the roster always shows, with their
+  player's Discord username, mains and alts.
 - **What the other addons share goes into the file too.** Each guild addon
   shares its own part, and Bot'tar Sync reads it from them when it writes
   the file: professions and recipes from Guild Professions & Recipes;
@@ -109,7 +119,8 @@ strings, which the tests make in the game's format) and, when Node.js is
 installed, the bot's reader on files written the way the game writes them. Another checks the KinFolk buttons and key
 against a stand-in for KinFolk's public pieces, and another the Discord name box, the My data
 window and its button, and how a profile travels between the characters of an account and the
-guild. One test puts members on the last release
+guild. Another checks the roster's filters, its tooltips and the Statistics window against a
+stand-in for the game's member list. One test puts members on the last release
 (taken from its git tag) in the same guild as members on this version.
 
 ## Releasing

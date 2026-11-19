@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.0 - The roster in numbers
+
+- **Filters on the guild roster**: three new boxes on the guild's Roster tab, right of Offline members: Mains and Alts, ticked, and Banks, not ticked, so bank characters stay out of the list until you tick it. Members without Bot'tar Sync, or without a Discord username, count as mains. Bank characters are those with a bank rank of Guild Bank Alts ("Banco" until the guild master chooses others).
+- **Statistics**: a new button left of Offline members opens a window beside the guild window, as tall as it, with the guild's members in numbers. A click on a number filters the roster, and a second click removes the filter:
+  - **Characters**: how many mains, alts, bank characters and all of them; a click shows only that kind (it sets the boxes).
+  - **Classes**: a bar with a section of each class's color, as wide as its share. A click on a class shows a second bar with its specializations, from Guild Builds. A character whose two specs go into different trees counts in both, and the window says how many do.
+  - **Levels**: a card for each ten levels, and one for level 60.
+  - Every number counts what the other filters let through, and the offline members only while the roster shows them. The class, specialization and level filters go when the window closes.
+- **A member's tooltip in the roster always shows**, not only when a text is cut, and adds their player's Discord username, mains and alts.
+
 ## 0.5.0 - Who plays each character
 
 - **Your Discord username**: a member whose account has none yet is asked for it a little after logging in or joining the guild, in a box with an Accept button. It is the account's unique username, in small letters (2 to 32 letters, numbers, `_` or `.`), not the display name nor a server nickname: the box says so, and its tooltip tells where Discord shows it.

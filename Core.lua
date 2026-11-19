@@ -1,7 +1,9 @@
 -- Bot'tar Sync: shares every guild member's characters with the guild, and
 -- who plays them (their Discord name, mains and alts: Profile.lua), and
 -- writes them, as JSON, into the saved variables file for the Bot'tar bot,
--- together with what the guild's other addons share (Sources.lua).
+-- together with what the guild's other addons share (Sources.lua). On the
+-- game's guild roster it adds filters and a Statistics window (Filters.lua,
+-- Stats.lua, RosterView.lua).
 --
 -- The addon messages, the guild roster, the saved database and the sync
 -- are LibGuildSync's (a separate addon this one depends on), attached
@@ -81,7 +83,8 @@ events:SetScript("OnEvent", function(self, event, name)
         Lib.Start(ns)
         -- Each part starts on its own, so a failure in one (reported as a normal
         -- Lua error) does not stop the others.
-        for _, init in ipairs({ ns.Character.Init, ns.Profile.Init, ns.Export.Init, ns.KinFolk.Init, ns.MyData.Init }) do
+        for _, init in ipairs({ ns.Character.Init, ns.Profile.Init, ns.Export.Init, ns.KinFolk.Init, ns.MyData.Init,
+            ns.Filters.Init, ns.Stats.Init, ns.RosterView.Init }) do
             xpcall(init, geterrorhandler())
         end
     end

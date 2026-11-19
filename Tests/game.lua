@@ -16,6 +16,9 @@ return function(H)
     H.FrameMethods.HasFocus = function(self)
         return self._focus == true
     end
+    -- A check box's label, and widget looks the tests do not check.
+    H.TemplateRegions.UICheckButtonTemplate = H.TemplateRegions.UICheckButtonTemplate or { Text = "FontString" }
+    H.NoOpMethods.SetHighlightAtlas = true
     -- A text's height: 12 pixels a line, its lines as wide as the text is
     -- set to be (6 pixels a character, as GetStringWidth).
     H.FrameMethods.GetStringHeight = function(self)
