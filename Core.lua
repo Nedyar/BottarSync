@@ -1,9 +1,10 @@
 -- Bot'tar Sync: shares every guild member's characters with the guild, and
--- who plays them (their Discord name, mains and alts: Profile.lua), and
+-- who plays them (their Discord name, mains and alts: Profile.lua, which
+-- the guild's officers may set over what the players say: Officers.lua), and
 -- writes them, as JSON, into the saved variables file for the Bot'tar bot,
--- together with what the guild's other addons share (Sources.lua). On the
--- game's guild roster it adds filters and a Statistics window (Filters.lua,
--- Stats.lua, RosterView.lua).
+-- together with what the guild's other addons share (Sources.lua). From the
+-- game's guild roster it opens a Statistics window, with a list of the
+-- members to filter (Filters.lua, Stats.lua, RosterView.lua).
 --
 -- The addon messages, the guild roster, the saved database and the sync
 -- are LibGuildSync's (a separate addon this one depends on), attached
@@ -23,17 +24,19 @@ Lib.Attach(ns, {
     prefix = "BottarSync",
     trialPrefix = "BottarSyncTest",
     trial = false,
-    -- 3: a player's list names characters they added that are not theirs
-    -- yet (0.7), which 0.5 and 0.6 would take for their own account's, and
-    -- join it to that player without asking. Still read: 2, the changes of
-    -- members on 0.5 and 0.6, and 1, those of members on 0.4 and before.
-    protocol = "3",
-    legacy = { ["1"] = true, ["2"] = true },
+    -- 4: an officer's record carries what the officers set (0.8), which
+    -- 0.7 and before would leave out of the copies they pass on. Still
+    -- read: 3, the changes of members on 0.7, 2, those of members on 0.5
+    -- and 0.6, and 1, those of members on 0.4 and before.
+    protocol = "4",
+    legacy = { ["1"] = true, ["2"] = true, ["3"] = true },
     savedVariable = "BottarSyncDB",
 })
 
--- A change to the Discord name, mains or alts goes out within seconds.
+-- A change to the Discord name, mains or alts goes out within seconds, an
+-- officer's too.
 ns.Sync.QUICK_KINDS.profile = true
+ns.Sync.QUICK_KINDS.officers = true
 
 -- While a version that keeps the protocol is tried in game before its
 -- release, it tells the guild it runs the last release (ANNOUNCE_AS): it
@@ -85,8 +88,8 @@ events:SetScript("OnEvent", function(self, event, name)
         Lib.Start(ns)
         -- Each part starts on its own, so a failure in one (reported as a normal
         -- Lua error) does not stop the others.
-        for _, init in ipairs({ ns.Character.Init, ns.Profile.Init, ns.Export.Init, ns.KinFolk.Init, ns.MyData.Init,
-            ns.Filters.Init, ns.Stats.Init, ns.RosterView.Init }) do
+        for _, init in ipairs({ ns.Character.Init, ns.Officers.Init, ns.Profile.Init, ns.Export.Init, ns.KinFolk.Init,
+            ns.MyData.Init, ns.Filters.Init, ns.Stats.Init, ns.RosterView.Init }) do
             xpcall(init, geterrorhandler())
         end
     end

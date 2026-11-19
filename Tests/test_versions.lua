@@ -1,14 +1,14 @@
 local H = ...
 
 -- Members on the last release and members on this version share one guild.
--- This version talks a new protocol (3: a player's list names characters
--- they added that are not theirs yet), which the release would misread:
--- this version still hears the release's changes (protocol 2), the release
--- gets nothing from it and is told to update, or, while this version is
--- tried in game (trial), does not hear it at all. The release is taken from
--- its git tag (H.Release). Both run the guild's other addons, as the
--- CurseForge app installs them.
-local RELEASE = "v0.6.0"
+-- This version talks a new protocol (4: an officer's record carries what
+-- the officers set), which the release would leave out of the copies it
+-- passes on: this version still hears the release's changes (protocol 3),
+-- the release gets nothing from it and is told to update, or, while this
+-- version is tried in game (trial), does not hear it at all. The release is
+-- taken from its git tag (H.Release). Both run the guild's other addons, as
+-- the CurseForge app installs them.
+local RELEASE = "v0.7.0"
 
 H.section("Versions: against " .. RELEASE)
 local old = H.Release(RELEASE)

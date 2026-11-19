@@ -1,5 +1,6 @@
 -- What the game gives that the shared harness does not simulate, for every
--- test file. The clients load the guild's other addons too (see run.lua), so
+-- test file (also the guild's rank settings and menu dividers, for
+-- test_officers). The clients load the guild's other addons too (see run.lua), so
 -- Guild Builds' own additions come first (its Tests/game.lua, from the folder
 -- next to this addon's). Then, what the bot's file needs to read builds
 -- (TalentTree.lua):
@@ -26,6 +27,23 @@ return function(H)
     end
     -- The game's search box: its instructions.
     H.TemplateRegions.SearchBoxTemplate = H.TemplateRegions.SearchBoxTemplate or { Instructions = "FontString" }
+    -- Which scripts were hooked with HookScript (_hooked[script] = true): a
+    -- hooked OnShow of the guild window taints its roster's rows.
+    local HookScript = H.FrameMethods.HookScript
+    H.FrameMethods.HookScript = function(self, name, fn)
+        rawset(self, "_hooked", rawget(self, "_hooked") or {})
+        self._hooked[name] = true
+        return HookScript(self, name, fn)
+    end
+    -- A divider in Blizzard's menus.
+    local NewMenuDescription = H.NewMenuDescription
+    function H.NewMenuDescription()
+        local description = NewMenuDescription()
+        function description:CreateDivider()
+            self.entries[#self.entries + 1] = { kind = "divider" }
+        end
+        return description
+    end
     -- A text's height: 12 pixels a line, its lines as wide as the text is
     -- set to be (6 pixels a character, as GetStringWidth).
     H.FrameMethods.GetStringHeight = function(self)
@@ -222,6 +240,17 @@ return function(H)
             end
             env.Constants = env.Constants or {}
             env.Constants.TraitConsts = { VIEW_TRAIT_CONFIG_ID = VIEW }
+            -- The guild's rank settings: world.officerRanks = { [rank index]
+            -- = true } for the ranks with "Has officer privileges" (flag 22).
+            -- The game numbers ranks from 1 for the guild master.
+            env.C_GuildInfo.GuildControlGetRankFlags = function(rankOrder)
+                local flags = {}
+                for i = 1, 22 do
+                    flags[i] = false
+                end
+                flags[22] = (self.officerRanks or {})[rankOrder - 1] == true
+                return flags
+            end
             return env
         end
         return world

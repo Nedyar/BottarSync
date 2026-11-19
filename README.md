@@ -23,15 +23,21 @@ guild's other addons share.
   theirs at once, pending, and when it logs in it is asked whether it is
   theirs. Accepting makes only that character theirs, not the rest of its
   WoW account; one that already has another player's name stays theirs.
-- **Filters and numbers on the guild roster.** On the guild window's Roster
-  tab, three boxes right of Offline members choose what the list shows:
-  Mains and Alts (ticked at first) and Banks (bank characters, by Guild
-  Bank Alts' bank ranks). Members without Bot'tar Sync count as mains. A
-  **Statistics** button left of Offline members opens a window beside the
-  guild window: how many mains, alts and bank characters there are, a bar
-  of the classes (and of the chosen class's specializations, from Guild
-  Builds) and the members by level. A click on any of them filters the
-  roster. A member's tooltip in the roster always shows, with their
+- **The officers manage every player.** The guild master and the members
+  whose rank has the game's "Has officer privileges" find any player in My
+  data, by their username or any character of theirs (or with a click on a
+  member in the Statistics window's list), and change their username,
+  mains and characters, also for members without Bot'tar Sync. What they set
+  counts at once and prevails over what the player says.
+- **The guild in numbers.** A **Statistics** button left of Offline members,
+  on the guild window's Roster tab, opens a window beside the guild window:
+  how many mains, alts and bank characters there are (bank characters by
+  Guild Bank Alts' bank ranks; members without Bot'tar Sync count as mains),
+  a bar of the classes (and of the chosen class's specializations, from
+  Guild Builds) and the members by level, with the list of the members
+  beside them. A click on any number filters the list. The roster itself lists
+  everyone, as the game does (the game blocks changing notes and ranks from
+  rows an addon drew); a member's tooltip there always shows, with their
   player's Discord username, mains and alts.
 - **What the other addons share goes into the file too.** Each guild addon
   shares its own part, and Bot'tar Sync reads it from them when it writes

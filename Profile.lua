@@ -31,6 +31,15 @@
 --
 -- Only a record's owner ever changes it (LibGuildSync's Store.lua), so no
 -- one can put a character under their name without that character.
+--
+-- Officers: what the guild master and the officers set (Officers.lua)
+-- prevails over all of this. A rename changes the username a player's
+-- profiles show as; a character they set to a player is that player's, a
+-- main or an alt as they say, and not pending; one they set to nobody is
+-- nobody's. The player cannot change what they set: their username once
+-- the officers set anything about them, and those characters. A character
+-- set to a player goes by that player's profile on its own (as if it had
+-- accepted), so it is not asked for a username.
 local _, ns = ...
 
 local Profile = {}
@@ -194,18 +203,24 @@ end
 
 -- For a guild's records ({ [GUID] = Bot'tar Sync record }): { [GUID] = {
 -- dc = Discord username, main = true/false, pending = true for a character
--- a player added that goes by no profile } }, for each character that goes
--- by a profile or that a player added (it may have no record).
-function Profile.Resolve(records)
+-- a player added that goes by no profile, set = true for one an officer
+-- set } }, for each character that goes by a profile, that a player added
+-- or that an officer set to a player (it may have no record). effective:
+-- what the officers set (Officers.Effective of the same records), when the
+-- caller has it.
+function Profile.Resolve(records, effective)
+    effective = effective or ns.Officers.Effective(records)
+    local Rename = ns.Officers.Rename
     local newest, newestGUID = NewestProfiles(records)
     -- Each character's Discord username, and each player's profiles.
     local result, profiles = {}, {}
     for guid, record in pairs(records) do
         local profile = record.ak and newest[record.ak]
         if profile then
-            result[guid] = { dc = profile.dc, main = false }
-            profiles[profile.dc] = profiles[profile.dc] or {}
-            profiles[profile.dc][guid] = record
+            local dc = Rename(effective, profile.dc)
+            result[guid] = { dc = dc, main = false }
+            profiles[dc] = profiles[dc] or {}
+            profiles[dc][guid] = record
         end
     end
     -- Mains: the newest of the player's profiles that names the character.
@@ -229,7 +244,11 @@ function Profile.Resolve(records)
         end
     end
     for guid, record in pairs(claims) do
-        result[guid] = { dc = record.dc, main = record.ch[guid] == true, pending = true }
+        result[guid] = { dc = Rename(effective, record.dc), main = record.ch[guid] == true, pending = true }
+    end
+    -- What the officers set prevails.
+    for guid, item in pairs(effective.a) do
+        result[guid] = item.d and { dc = item.d, main = item.m, set = true } or nil
     end
     return result
 end
@@ -257,69 +276,48 @@ local function ClassFileOf(record, entry)
     end
 end
 
--- The player's characters in the current guild, as the window lists them:
--- { guid, name, level, class (file), main, own (the current one), state }.
--- state: "mine" (it goes by the player's profile), "pending" (added, and
--- it goes by none yet) or "other" (added, but another player's). Ours is
--- always among them. Mains first, then by level, then by name.
-function Profile.MyCharacters()
-    local profile = Profile.Own()
+-- Views -----------------------------------------------------------------------------------
+--
+-- The My data window (MyData.lua) shows one player at a time, a view: nil
+-- for the current character's player, { dc = username } for another player
+-- (an officer's), or { guid = GUID } for a character that is nobody's, to
+-- give it a player (an officer's).
+
+-- What the views look at: { records, effective (what the officers set),
+-- who (Resolve), officer (we are one), myName (the username the current
+-- character's player shows as), mine (the profile the character goes by is
+-- that player's, so the player's own changes go into it) }.
+local function Context()
     local records = GuildRecords()
-    local roster = ns.Roster.members
-    local who = Profile.Resolve(records)
-    local list, seen = {}, {}
-    local function Add(guid, state, main)
-        local record, entry = records[guid], roster[guid]
-        if seen[guid] or not (record or entry) then
-            return
-        end
-        seen[guid] = true
-        local level = math.max(record and record.l or 0, entry and entry.l or 0)
-        list[#list + 1] = {
-            guid = guid, name = (entry and entry.n) or (record and record.n) or guid, level = level,
-            class = ClassFileOf(record, entry), main = main, own = guid == ns.playerGUID, state = state,
-        }
+    local effective = ns.Officers.Effective(records)
+    local who = Profile.Resolve(records, effective)
+    local own = Profile.Own()
+    local context = { records = records, effective = effective, who = who, officer = ns.Officers.AmI() }
+    local ownName = ns.Officers.Rename(effective, own.dc)
+    local current = who[ns.playerGUID]
+    if current and not current.pending then
+        context.myName = current.dc
+    else
+        context.myName = ownName
     end
-    -- The characters that go by the player's profiles.
-    for guid, record in pairs(records) do
-        local resolved = who[guid]
-        local mine = guid == ns.playerGUID
-            or (profile.key and record.ak == profile.key)
-            or (profile.dc and resolved and not resolved.pending and resolved.dc == profile.dc)
-        if mine then
-            local main
-            if resolved and not resolved.pending then
-                main = resolved.main
-            else
-                main = profile.ch[guid] == true
-            end
-            Add(guid, "mine", main)
-        end
+    context.mine = own.key ~= nil and ownName == context.myName
+    return context
+end
+
+local function NewItem(context, guid, state, main)
+    local record, entry = context.records[guid], ns.Roster.members[guid]
+    if not (record or entry) then
+        return nil
     end
-    -- The ones the player added, in any of their lists: ours, and the
-    -- newest of each of their profiles (older copies may name characters
-    -- taken out since).
-    if profile.dc then
-        local lists = { profile.ch }
-        for key, record in pairs((NewestProfiles(records))) do
-            if key ~= profile.key and record.dc == profile.dc and record.ch then
-                lists[#lists + 1] = record.ch
-            end
-        end
-        for _, ch in ipairs(lists) do
-            for guid in pairs(ch) do
-                local resolved = who[guid]
-                if resolved and resolved.dc == profile.dc then
-                    Add(guid, "pending", resolved.main)
-                elseif resolved then
-                    Add(guid, "other", false)
-                elseif ch == profile.ch then
-                    -- Not shared yet.
-                    Add(guid, "pending", ch[guid] == true)
-                end
-            end
-        end
-    end
+    return {
+        guid = guid, name = (entry and entry.n) or (record and record.n) or guid,
+        level = math.max(record and record.l or 0, entry and entry.l or 0), class = ClassFileOf(record, entry),
+        main = main, own = guid == ns.playerGUID, state = state,
+    }
+end
+
+-- Mains first, then by level, then by name.
+local function SortItems(list)
     table.sort(list, function(a, b)
         if a.main ~= b.main then
             return a.main
@@ -333,25 +331,139 @@ function Profile.MyCharacters()
         end
         return a.guid < b.guid
     end)
+end
+
+-- The characters of a view's player (name: their username, nil without
+-- one) in the current guild: { guid, name, level, class (file), main, own
+-- (the current one), state, set }. state: "mine" (theirs), "pending"
+-- (added, and it goes by no profile yet) or "other" (in the player's own
+-- list but another player's; only in their own view). set: an officer set
+-- it. Ours is always in our own view.
+local function Characters(context, view, name)
+    local list, seen = {}, {}
+    local function Add(guid, state, main)
+        if seen[guid] then
+            return
+        end
+        local item = NewItem(context, guid, state, main)
+        if item then
+            seen[guid] = true
+            item.set = state ~= "other" and context.effective.a[guid] ~= nil
+            list[#list + 1] = item
+        end
+    end
+    if view and view.guid then
+        Add(view.guid, "mine", true)
+        return list
+    end
+    local who = context.who
+    if not view then
+        local current = who[ns.playerGUID]
+        if current and not current.pending then
+            Add(ns.playerGUID, "mine", current.main)
+        else
+            Add(ns.playerGUID, "mine", Profile.Own().ch[ns.playerGUID] == true)
+        end
+    end
+    if name then
+        for guid, resolved in pairs(who) do
+            if resolved.dc == name then
+                Add(guid, resolved.pending and "pending" or "mine", resolved.main)
+            end
+        end
+    end
+    -- The ones in the player's own lists that are another player's: ours,
+    -- and the newest of each of their profiles (older copies may name
+    -- characters taken out since).
+    if not view and name and context.mine then
+        local profile = Profile.Own()
+        local lists = { profile.ch }
+        for key, record in pairs((NewestProfiles(context.records))) do
+            if key ~= profile.key and record.ch and ns.Officers.Rename(context.effective, record.dc) == name then
+                lists[#lists + 1] = record.ch
+            end
+        end
+        for _, ch in ipairs(lists) do
+            for guid in pairs(ch) do
+                local resolved = who[guid]
+                if resolved and resolved.dc ~= name then
+                    Add(guid, "other", false)
+                elseif not resolved and not context.effective.a[guid] and ch == profile.ch then
+                    -- Not shared yet.
+                    Add(guid, "pending", ch[guid] == true)
+                end
+            end
+        end
+    end
+    SortItems(list)
     return list
 end
 
--- The guild's characters that can be added to the player's list: in the
--- roster, not in the list, and going by no other player's profile.
--- { guid, name, level, class } by name.
-function Profile.Addable()
-    local profile = Profile.Own()
-    local mine = {}
-    for _, item in ipairs(Profile.MyCharacters()) do
-        mine[item.guid] = true
+-- What the window shows for a view: { name = the player's username (nil
+-- while they have none), items = their characters (see Characters, each
+-- with canMain: its box can be ticked, and canRemove: it can be taken
+-- out), officer = we are one, canName = the username can be changed,
+-- canAdd = characters can be added }. A player changes their own view but
+-- what the officers set; an officer changes any.
+function Profile.View(view)
+    local context = Context()
+    local name
+    if view then
+        name = view.dc
+    else
+        name = context.myName
     end
-    local who = Profile.Resolve(GuildRecords())
+    local result = { name = name, officer = context.officer, items = Characters(context, view, name) }
+    local own = Profile.Own()
+    if view then
+        result.canName = context.officer
+        result.canAdd = context.officer and name ~= nil
+    else
+        local managed = name and ns.Officers.Managed(context.effective)[name]
+        result.canName = context.officer or not own.key or (context.mine and not managed)
+        result.canAdd = name ~= nil and (context.mine or context.officer)
+    end
+    for _, item in ipairs(result.items) do
+        local free = context.officer or not item.set
+        item.canMain = result.canAdd and item.state ~= "other" and free
+        item.canRemove = result.canAdd and free and (view ~= nil or item.state ~= "mine")
+    end
+    return result
+end
+
+-- The player's characters in the current guild, as their own view lists
+-- them.
+function Profile.MyCharacters()
+    return Profile.View(nil).items
+end
+
+-- Whether a character is set to someone else than a view's player (name),
+-- or to nobody, by an officer, or goes by another player's profile.
+local function Taken(context, guid, name)
+    local resolved = context.who[guid]
+    return context.effective.a[guid] ~= nil or (resolved ~= nil and not resolved.pending and resolved.dc ~= name)
+end
+
+-- The guild's characters that can be added to a view's player: in the
+-- roster and not theirs yet; for a player, only those no officer set and
+-- that go by no other player's profile. { guid, name, level, class, owner
+-- (for an officer: the username of the player it is now, if any) } by
+-- name.
+function Profile.Addable(view)
+    local context = Context()
+    local name = view and view.dc or context.myName
+    local listed = {}
+    for _, item in ipairs(Characters(context, view, name)) do
+        listed[item.guid] = true
+    end
     local list = {}
     for guid, entry in pairs(ns.Roster.members) do
-        local resolved = who[guid]
-        local owned = resolved and not resolved.pending and resolved.dc ~= profile.dc
-        if not mine[guid] and not owned then
-            list[#list + 1] = { guid = guid, name = entry.n or guid, level = entry.l or 0, class = entry.c }
+        if not listed[guid] and (context.officer or not Taken(context, guid, name)) then
+            local resolved = context.who[guid]
+            list[#list + 1] = {
+                guid = guid, name = entry.n or guid, level = entry.l or 0, class = entry.c,
+                owner = context.officer and resolved and resolved.dc or nil,
+            }
         end
     end
     table.sort(list, function(a, b)
@@ -360,28 +472,42 @@ function Profile.Addable()
     return list
 end
 
--- Changes ------------------------------------------------------------------------------
-
--- Sets the Discord username of the profile the character goes by (a
--- cleaned one). The first time, the account gets its key, and the current
--- character is its first main.
-function Profile.SetDiscord(name)
-    local profile = Profile.Own()
-    if not profile.key then
-        profile = Profile.Account()
-        profile.key = Profile.NewKey()
-        profile.ch = { [ns.playerGUID] = true }
+-- The guild's players, for an officer's search: { [username] = how many of
+-- their characters are in the roster }, and who plays each character (see
+-- Resolve).
+function Profile.Players()
+    local context = Context()
+    local players = {}
+    for guid, resolved in pairs(context.who) do
+        if ns.Roster.members[guid] then
+            players[resolved.dc] = (players[resolved.dc] or 0) + 1
+        end
     end
-    profile.dc = name
-    profile.pt = math.max(ns.Now(), (profile.pt or 0) + 1)
-    Profile.Publish()
+    return players, context.who
 end
 
--- The list as the window shows it, so the profile that is now the newest
--- of the player agrees with it.
-local function Snapshot()
+-- Changes ------------------------------------------------------------------------------
+
+-- How a change to a character in a view goes: "profile" (into the profile
+-- the current character goes by), "officer" (an officer's, Officers.lua),
+-- or nil (not allowed).
+local function Way(context, view, guid)
+    if view then
+        return context.officer and "officer" or nil
+    end
+    local resolved = context.who[guid]
+    local setHere = context.effective.a[guid] ~= nil and (resolved == nil or resolved.dc == context.myName)
+    if context.mine and not setHere then
+        return "profile"
+    end
+    return context.officer and "officer" or nil
+end
+
+-- The current character's own list as the window shows it, so the profile
+-- that is now the newest of the player agrees with it.
+local function Snapshot(context)
     local ch, count = {}, 0
-    for _, item in ipairs(Profile.MyCharacters()) do
+    for _, item in ipairs(Characters(context, nil, context.myName)) do
         ch[item.guid] = item.main
         count = count + 1
     end
@@ -395,47 +521,104 @@ local function SaveList(ch)
     Profile.Publish()
 end
 
--- Marks one of the player's characters as a main or an alt.
-function Profile.SetMain(guid, main)
-    if not Profile.Own().key then
-        return
+-- Sets the Discord username of a view's player (a cleaned one). Returns
+-- the view to show then (the player's new username, for another player's).
+-- In our own view it goes into the profile the character goes by: the
+-- first time, the account gets its key, and the current character is its
+-- first main. An officer renames the player instead once the officers set
+-- something about them.
+function Profile.SetDiscord(name, view)
+    local context = Context()
+    if view and view.guid then
+        if context.officer and ns.Officers.Assign(view.guid, name, true) then
+            return { dc = name }
+        end
+        return view
     end
-    local ch = Snapshot()
-    ch[guid] = main == true
-    SaveList(ch)
+    local current = view and view.dc or context.myName
+    local profile = Profile.Own()
+    local managed = current and ns.Officers.Managed(context.effective)[current]
+    if not view and (not profile.key or (context.mine and not managed)) then
+        if not profile.key then
+            profile = Profile.Account()
+            profile.key = Profile.NewKey()
+            profile.ch = { [ns.playerGUID] = true }
+        end
+        profile.dc = name
+        profile.pt = math.max(ns.Now(), (profile.pt or 0) + 1)
+        Profile.Publish()
+        return nil
+    end
+    if context.officer and current and ns.Officers.RenamePlayer(current, name) then
+        return view and { dc = name } or nil
+    end
+    return view
 end
 
--- Adds a character of the guild to the player's list, as an alt. Returns
+-- Marks a character of a view's player as a main or an alt.
+function Profile.SetMain(guid, main, view)
+    local context = Context()
+    local way = Way(context, view, guid)
+    if way == "officer" then
+        local name = view and view.dc or context.myName
+        return name ~= nil and ns.Officers.Assign(guid, name, main) or false
+    elseif way == "profile" then
+        local ch = Snapshot(context)
+        ch[guid] = main == true
+        SaveList(ch)
+        return true
+    end
+    return false
+end
+
+-- Adds a character of the guild to a view's player, as an alt. Returns
 -- true, or false and why ("full": the list holds as many as it can).
-function Profile.Add(guid)
-    if not Profile.Own().key or not ns.Data.IsGUID(guid) then
+function Profile.Add(guid, view)
+    if not ns.Data.IsGUID(guid) then
         return false
     end
-    local ch, count = Snapshot()
-    if ch[guid] ~= nil then
+    local context = Context()
+    local name = view and view.dc or context.myName
+    if not name then
         return false
     end
-    if count >= ns.Pack.LIMITS.profile then
-        return false, "full"
+    local taken = Taken(context, guid, name)
+    if not view and not taken and context.mine then
+        local ch, count = Snapshot(context)
+        if ch[guid] ~= nil then
+            return false
+        end
+        if count >= ns.Pack.LIMITS.profile then
+            return false, "full"
+        end
+        ch[guid] = false
+        SaveList(ch)
+        return true
     end
-    ch[guid] = false
-    SaveList(ch)
-    return true
+    if context.officer then
+        return ns.Officers.Assign(guid, name, false)
+    end
+    return false
 end
 
--- Takes out of the list a character the player added that is not theirs
--- (pending, or another player's).
-function Profile.Remove(guid)
-    if not Profile.Own().key then
-        return false
+-- Takes a character out of a view's player's list: in our own view one we
+-- added that is not ours (pending, or another player's); for an officer,
+-- any (it is then nobody's).
+function Profile.Remove(guid, view)
+    local context = Context()
+    local way = Way(context, view, guid)
+    if way == "officer" then
+        return ns.Officers.Assign(guid, false)
+    elseif way == "profile" then
+        local ch = Snapshot(context)
+        if ch[guid] == nil then
+            return false
+        end
+        ch[guid] = nil
+        SaveList(ch)
+        return true
     end
-    local ch = Snapshot()
-    if ch[guid] == nil then
-        return false
-    end
-    ch[guid] = nil
-    SaveList(ch)
-    return true
+    return false
 end
 
 -- Profiles from the guild -------------------------------------------------------------
@@ -464,9 +647,14 @@ end
 -- Claims on the current character ----------------------------------------------------
 
 -- The newest profile of the guild that names the current character, while
--- it goes by none: the record that carries it, or nil.
+-- it goes by none: the record that carries it, or nil. None once an
+-- officer set whose it is.
 function Profile.ClaimOnMe()
-    local newest, newestGUID = NewestProfiles(GuildRecords())
+    local records = GuildRecords()
+    if ns.Officers.Effective(records).a[ns.playerGUID] then
+        return nil
+    end
+    local newest, newestGUID = NewestProfiles(records)
     local best, bestGUID
     for key, record in pairs(newest) do
         local guid = newestGUID[key]
@@ -484,6 +672,40 @@ function Profile.AcceptClaim(record)
     Profile.Publish()
 end
 
+-- A character an officer set to a player goes by that player's profile, as
+-- if it had accepted: the newest that shows as their username, or else a
+-- new one of its own with it. Only that character, not its account.
+function Profile.FollowOfficers()
+    if not ns.Roster.guildKey then
+        return
+    end
+    local records = GuildRecords()
+    local effective = ns.Officers.Effective(records)
+    local item = effective.a[ns.playerGUID]
+    local own = Profile.Own()
+    if not (item and item.d) or (own.key and ns.Officers.Rename(effective, own.dc) == item.d) then
+        return
+    end
+    local newest, newestGUID = NewestProfiles(records)
+    local best, bestGUID
+    for key, record in pairs(newest) do
+        local guid = newestGUID[key]
+        if ns.Officers.Rename(effective, record.dc) == item.d and Newer(guid, record, bestGUID, best) then
+            best, bestGUID = record, guid
+        end
+    end
+    if best then
+        ns.Debug("going by %s's profile, as an officer set", item.d)
+        Profile.AcceptClaim(best)
+    elseif ns.Officers.Rename(effective, item.d) == item.d then
+        ns.Debug("a profile of %s, as an officer set", item.d)
+        ns.Data.OwnState().profile = {
+            key = Profile.NewKey(), dc = item.d, pt = ns.Now(), ch = { [ns.playerGUID] = item.m == true },
+        }
+        Profile.Publish()
+    end
+end
+
 -- Asking for the Discord username ------------------------------------------------------------
 
 local promptTimer
@@ -497,7 +719,9 @@ function Profile.SchedulePrompt()
     end
     promptTimer = C_Timer.NewTimer(Profile.PROMPT_DELAY, function()
         promptTimer = nil
-        if Profile.HasName() or not ns.Roster.guildKey then
+        Profile.FollowOfficers()
+        -- Nor is it asked once an officer set whose it is.
+        if Profile.HasName() or not ns.Roster.guildKey or ns.Officers.Current().a[ns.playerGUID] then
             return
         end
         local claim = Profile.ClaimOnMe()
@@ -534,6 +758,13 @@ function Profile.Init()
     ns.On("ProfileChanged", function()
         if Profile.HasName() then
             ns.DiscordPrompt.Hide()
+        end
+    end)
+    -- An officer set whose the character is: once the guild had time to
+    -- send its records (until then the prompt's timer looks).
+    ns.On("OfficersChanged", function()
+        if not promptTimer then
+            ns.Debounce("FollowOfficers", 5, Profile.FollowOfficers)
         end
     end)
 end

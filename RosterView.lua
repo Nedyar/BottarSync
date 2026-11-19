@@ -2,17 +2,17 @@
 -- game's guild window (CommunitiesFrame.MemberList):
 --   - a Statistics button, where the game's "Offline members" box was (the
 --     box moves right of it), which opens the Statistics window (Stats.lua);
---   - right of that box, three boxes for the kinds of characters the roster
---     shows: Mains and Alts (ticked at first) and Banks (Filters.lua);
---   - the roster lists only the members the filters let through;
 --   - a member's tooltip always shows (the game's only did when a text was
 --     cut), with their player's Discord username, mains and alts.
 --
--- The game builds the list in RefreshListDisplay, on every change (roster,
--- sort, offline box, tab, community); a hook after it takes out the members
--- the filters hide. The list's rows are then set up from addon code, which
--- the game's code reads later (a whisper from a row's menu...). Nothing
--- here runs while the roster shows another community.
+-- Its list stays the game's own, with every member: the game blocks
+-- changing a member's notes or rank (and removing them) from a row that an
+-- addon's code drew, and taking members out of the list, or having it
+-- drawn again, makes our code draw its rows. Until 0.8 the roster had boxes
+-- to hide kinds of characters; the Statistics window lists them instead.
+-- So this file only hooks the game's functions (hooksecurefunc), moves its
+-- box, and adds to tooltips. Nothing here runs while the roster shows
+-- another community.
 local _, ns = ...
 local L = ns.L
 local Filters = ns.Filters
@@ -25,11 +25,9 @@ ns.RosterView = RosterView
 local OFFLINE_X, OFFLINE_Y = 0, 26
 RosterView.BUTTON_Y = 31   -- our button, level with that box
 RosterView.BUTTON_HEIGHT = 22
-RosterView.GAP = 10        -- between the boxes
-local DISCORD_COLOR = { 0.6, 0.65, 1 }
+RosterView.DISCORD_COLOR = { 0.6, 0.65, 1 }
 
 local memberList, statsButton
-local checks = {}
 local offlineMoved = false
 local hooked = setmetatable({}, { __mode = "k" })
 
@@ -46,23 +44,10 @@ end
 
 -- The list ---------------------------------------------------------------------------------
 
-local function Keep(data)
-    local info = type(data) == "table" and data.memberInfo
-    if not ns.CanRead(info) or info.professionHeaderId then
-        return true
-    end
-    return Filters.Shows(ns.Plain(info.guid))
-end
-
--- Our boxes show the kinds shown, and the game's box moves for our button.
+-- Our button shows on the guild's roster, and the game's box moves for it.
 local function UpdateControls(list)
     local active = Active(list)
     statsButton:SetShown(active)
-    local kinds = Filters.Kinds()
-    for _, check in ipairs(checks) do
-        check:SetShown(active)
-        check:SetChecked(kinds[check.kind])
-    end
     local offline = list.ShowOfflineButton
     if offline and offlineMoved ~= active then
         offlineMoved = active
@@ -75,50 +60,13 @@ local function UpdateControls(list)
     end
 end
 
--- Runs after the game fills the list: the members the filters hide go.
--- Nothing is set when none must go.
-local function FilterList(list)
+-- Runs after the game fills the list (also when its "Offline members" box
+-- changes, which the Statistics window counts by): it changes nothing in
+-- the list.
+local function ListShown(list)
     UpdateControls(list)
-    if not Active(list) then
-        return
-    end
-    local scrollBox = list.ScrollBox
-    local provider = scrollBox and scrollBox.GetDataProvider and scrollBox:GetDataProvider()
-    if not (provider and provider.ForEach) then
-        return
-    end
-    local hide = false
-    provider:ForEach(function(data)
-        if not Keep(data) then
-            hide = true
-        end
-    end)
-    if hide then
-        local shown = CreateDataProvider()
-        provider:ForEach(function(data)
-            if Keep(data) then
-                shown:Insert(data)
-            end
-        end)
-        scrollBox:SetDataProvider(shown, ScrollBoxConstants.RetainScrollPosition)
-        -- As the game does after setting its own.
-        scrollBox:ForEachFrame(function(row)
-            if row.SetExpanded then
-                row:SetExpanded(list.expandedDisplay)
-            end
-        end)
-    end
-    ns.Fire("RosterShown")
-end
-
--- Shows the list again with the filters as they are now.
-function RosterView.Refresh()
-    if memberList then
-        if memberList:IsVisible() and Active(memberList) then
-            memberList:RefreshListDisplay()
-        else
-            UpdateControls(memberList)
-        end
+    if Active(list) then
+        ns.Fire("RosterShown")
     end
 end
 
@@ -184,6 +132,24 @@ local function GameLines(row, info)
     end
 end
 
+-- Adds to the tooltip who plays a member (Filters.Member's entry): their
+-- player's Discord username, mains and alts. Nothing without a player.
+function RosterView.AddPlayerLines(entry)
+    if not (entry and entry.dc) then
+        return
+    end
+    local mains, alts = PlayerCharacters(entry.dc)
+    GameTooltip:AddLine(" ")
+    local discord = entry.pending and L["Discord: %s (pending)"] or L["Discord: %s"]
+    GameTooltip:AddLine(discord:format(entry.dc), unpack(RosterView.DISCORD_COLOR))
+    if #mains > 0 then
+        GameTooltip:AddLine(L["Mains: %s"]:format(table.concat(mains, ", ")), 1, 1, 1, true)
+    end
+    if #alts > 0 then
+        GameTooltip:AddLine(L["Alts: %s"]:format(table.concat(alts, ", ")), 1, 1, 1, true)
+    end
+end
+
 -- After the game's OnEnter of a row: its tooltip always, with who plays it.
 local function RowOnEnter(row)
     if not (memberList and IsGuild(memberList)) or row.isInvitation then
@@ -200,19 +166,7 @@ local function RowOnEnter(row)
     if not GameTooltip:IsOwned(row) then
         GameLines(row, info)
     end
-    local entry = Filters.Member(guid)
-    if entry and entry.dc then
-        local mains, alts = PlayerCharacters(entry.dc)
-        GameTooltip:AddLine(" ")
-        local discord = entry.pending and L["Discord: %s (pending)"] or L["Discord: %s"]
-        GameTooltip:AddLine(discord:format(entry.dc), unpack(DISCORD_COLOR))
-        if #mains > 0 then
-            GameTooltip:AddLine(L["Mains: %s"]:format(table.concat(mains, ", ")), 1, 1, 1, true)
-        end
-        if #alts > 0 then
-            GameTooltip:AddLine(L["Alts: %s"]:format(table.concat(alts, ", ")), 1, 1, 1, true)
-        end
-    end
+    RosterView.AddPlayerLines(Filters.Member(guid))
     GameTooltip:Show()
 end
 
@@ -233,26 +187,6 @@ local function ShowTooltip(owner, title, text)
     GameTooltip:Show()
 end
 
-local function CreateCheck(kind, label, tip, after)
-    local check = CreateFrame("CheckButton", nil, memberList, "UICheckButtonTemplate")
-    check.kind = kind
-    if check.Text then
-        check.Text:SetText(label)
-    end
-    check:SetPoint("LEFT", after.Text or after, "RIGHT", RosterView.GAP, 0)
-    check:SetScript("OnClick", function(self)
-        PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
-        Filters.SetKind(self.kind, self:GetChecked())
-    end)
-    check:SetScript("OnEnter", function(self)
-        ShowTooltip(self, label, tip)
-    end)
-    check:SetScript("OnLeave", GameTooltip_Hide)
-    check:Hide()
-    checks[#checks + 1] = check
-    return check
-end
-
 local function Setup()
     local communities = CommunitiesFrame
     local list = communities and communities.MemberList
@@ -270,29 +204,18 @@ local function Setup()
         ns.Stats.Toggle()
     end)
     statsButton:SetScript("OnEnter", function(self)
-        ShowTooltip(self, L["Statistics"], L["The guild's members in numbers: click one to filter the roster."])
+        ShowTooltip(self, L["Statistics"], L["The guild's members in numbers, and a list of them to filter."])
     end)
     statsButton:SetScript("OnLeave", GameTooltip_Hide)
     statsButton:Hide()
     RosterView.statsButton = statsButton
 
-    local after = list.ShowOfflineButton
-    after = CreateCheck("main", L["Mains"], L["Shows the mains. Members without Bot'tar Sync, or without a Discord username, count as mains."], after)
-    after = CreateCheck("alt", L["Alts"], L["Shows the alts: the characters their players did not tick as mains."], after)
-    CreateCheck("bank", L["Banks"], L["Shows the bank characters: those with a bank rank of Guild Bank Alts."], after)
-    RosterView.checks = checks
-
-    hooksecurefunc(list, "RefreshListDisplay", FilterList)
+    hooksecurefunc(list, "RefreshListDisplay", ListShown)
     ScrollUtil.AddAcquiredFrameCallback(list.ScrollBox, function(_, row)
         HookRow(row)
     end, RosterView, false)
     list.ScrollBox:ForEachFrame(HookRow)
     UpdateControls(list)
-    if list:IsVisible() then
-        list:RefreshListDisplay()
-    end
-
-    ns.On("FiltersChanged", RosterView.Refresh)
 end
 
 function RosterView.Init()

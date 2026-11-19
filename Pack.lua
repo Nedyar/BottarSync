@@ -20,6 +20,8 @@ Pack.LIMITS = {
     discord = 32,    -- a Discord username
     accountKey = 16,
     profile = 60,    -- characters a profile tells mains from alts for
+    renames = 100,   -- the officers' renames of players (Officers.lua)
+    assignments = 400, -- characters the officers set the player of
 }
 
 -- Records --------------------------------------------------------------------
@@ -49,6 +51,11 @@ Pack.LIMITS = {
 -- (see Profile.lua): ak = the account's key, dc = the player's Discord name,
 -- pt = time of the profile's last change, ch = { [GUID] = true for a main,
 -- false for an alt }. Records of 0.4 and before end without it.
+-- Since 0.8 (protocol 4) a record also carries what the officers set, when
+-- its character is one (see Officers.lua): ov = { r = { [username] = { n =
+-- new username, t = time } }, a = { [GUID] = { d = username or false, m =
+-- true for a main, t = time } } }, or nil. Records of 0.7 and before end
+-- without it.
 -- A packed record is prefixed by its length, so fields added later are
 -- skipped by older readers.
 local K_UNKNOWN, K_NONE, K_LIST = 0, 1, 2
@@ -239,6 +246,54 @@ local function ReadProfile(reader, record)
     end
 end
 
+local function WriteOfficers(writer, ov)
+    local renames = SortedKeys(ov and ov.r or {})
+    writer:UInt(#renames)
+    for _, name in ipairs(renames) do
+        local item = ov.r[name]
+        writer:Str(name)
+        writer:Str(item.n)
+        writer:UInt(item.t)
+    end
+    local guids = SortedKeys(ov and ov.a or {})
+    writer:UInt(#guids)
+    for _, guid in ipairs(guids) do
+        local item = ov.a[guid]
+        writer:Str(guid)
+        writer:Str(item.d or "")
+        writer:Byte(item.m and 1 or 0)
+        writer:UInt(item.t)
+    end
+end
+
+local function ReadOfficers(reader, record)
+    if reader:AtEnd() then
+        return
+    end
+    local ov = { r = {}, a = {} }
+    local count = reader:UInt()
+    if count > LIMITS.renames then
+        error("too many renames", 0)
+    end
+    for _ = 1, count do
+        local name = reader:Str(LIMITS.discord)
+        ov.r[name] = { n = reader:Str(LIMITS.discord), t = reader:UInt() }
+    end
+    count = reader:UInt()
+    if count > LIMITS.assignments then
+        error("too many assignments", 0)
+    end
+    for _ = 1, count do
+        local guid = reader:Str()
+        local who = reader:Str(LIMITS.discord)
+        ov.a[guid] = { d = who ~= "" and who or false, m = reader:Byte() == 1, t = reader:UInt() }
+    end
+    -- Written empty by the characters that set nothing.
+    if next(ov.r) or next(ov.a) then
+        record.ov = ov
+    end
+end
+
 -- The record's own bytes, without the length prefix.
 local function RecordBody(guid, record)
     local writer = Pack.Writer()
@@ -258,6 +313,7 @@ local function RecordBody(guid, record)
     WriteGear(writer, record.g)
     WriteTalents(writer, record.tl)
     WriteProfile(writer, record)
+    WriteOfficers(writer, record.ov)
     return writer:Result()
 end
 
@@ -265,7 +321,7 @@ function Pack.WriteRecord(writer, guid, record)
     writer:Str(RecordBody(guid, record))
 end
 
-local MAX_RECORD = 20000
+local MAX_RECORD = 40000
 
 -- Returns guid, record. The record still has to be checked (Data.CleanRecord).
 function Pack.ReadRecord(reader)
@@ -287,6 +343,7 @@ function Pack.ReadRecord(reader)
     record.g = ReadGear(reader)
     record.tl = ReadTalents(reader)
     ReadProfile(reader, record)
+    ReadOfficers(reader, record)
     -- Anything after this was added by a later version.
     return guid, record
 end

@@ -214,12 +214,19 @@ local function SetupGuildWindow()
     end
     Place()
     KinFolk.guildWindowButton = guildWindowButton
-    communities:HookScript("OnShow", function()
-        -- The gap between the game's buttons can be measured once shown.
-        Place()
-        -- KinFolk may have opened by itself (its welcome page, a notice).
-        KinFolk.AttachToWindow()
-    end)
+    -- A secure hook of the window's own OnShow (its XML calls the method by
+    -- name), never HookScript: a hooked script runs in the same execution
+    -- as the scripts of the window's children that follow it, and taints
+    -- them (the roster's rows, from which the game then refuses to change a
+    -- member's notes or rank).
+    if type(communities.OnShow) == "function" then
+        hooksecurefunc(communities, "OnShow", function()
+            -- The gap between the game's buttons can be measured once shown.
+            Place()
+            -- KinFolk may have opened by itself (its welcome page, a notice).
+            KinFolk.AttachToWindow()
+        end)
+    end
     KinFolk.AttachToWindow()
 end
 

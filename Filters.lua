@@ -1,5 +1,5 @@
--- Filters.lua: which guild members the Roster tab shows (RosterView.lua),
--- and the numbers the Statistics window (Stats.lua) gives about them.
+-- Filters.lua: which guild members the Statistics window (Stats.lua) lists,
+-- and the numbers it gives about them.
 --
 -- Each member of the guild roster is one of three kinds:
 --   - a bank character: its rank is one of Guild Bank Alts' bank ranks (the
@@ -12,50 +12,39 @@
 -- Guild Builds: the talent tree with the most points of each of its builds
 -- (Primary and Secondary). A character whose two builds go into different
 -- trees has both specializations; one without a build in Guild Builds has
--- an unknown one.
+-- none: it counts in no specialization, and a specialization's filter
+-- leaves it out.
 --
--- The roster's boxes choose the kinds it shows (mains and alts at first;
--- saved). The Statistics window adds a class, a specialization of it and a
--- level range, while it is open. Each number counts the members that every
--- other filter lets through, so it tells how many a click on it shows.
--- Offline members count while the roster shows them (its own box).
+-- The window's kind cards choose one kind to list (every kind at first),
+-- and its bars and level cards add a class, a specialization (of any class,
+-- or of the class chosen) and a level range, while it is open. Each number
+-- counts the members
+-- that every other filter lets through, so it tells how many a click on it
+-- lists. Offline members count while the game's roster shows them (its own
+-- "Offline members" box).
+--
+-- The game's roster itself is never filtered: the game blocks changing a
+-- member's notes or rank from a row of the roster that an addon's code drew
+-- (as taking members out of its list makes the rows be drawn).
 local _, ns = ...
 
 local Filters = {}
 ns.Filters = Filters
 
-Filters.KINDS = { "main", "alt", "bank" }
-Filters.DEFAULT_KINDS = { main = true, alt = true, bank = false }
 -- The level ranges, the last one for the highest level.
 Filters.LEVELS = { { 1, 9 }, { 10, 19 }, { 20, 29 }, { 30, 39 }, { 40, 49 }, { 50, 59 }, { 60, 999 } }
--- The specialization of the members without a build in Guild Builds.
-Filters.UNKNOWN = 0
 -- Guild Bank Alts' bank rank until its guild master chooses others.
 local BANK_RANK = "banco"
 local BANKS = "GuildBankAlts"
 
 -- The Statistics window's filters (nil: none).
+Filters.kind = nil  -- "main", "alt" or "bank"
 Filters.class = nil -- a class file ("HUNTER")
-Filters.spec = nil  -- a tab of that class's talent tree (1 to 3), or Filters.UNKNOWN
+Filters.spec = nil  -- a specialization: { class = file, tab = its talent tree's tab (1 to 3) }
 Filters.level = nil -- an index of Filters.LEVELS
 
 local members       -- [GUID] = what the filters look at, until something changes
 local trees = {}    -- [class file] = { tree = talent tree ID, tabs = Guild Builds' tb }
-
--- The kinds the roster shows: { main = bool, alt = bool, bank = bool }.
-function Filters.Kinds()
-    local settings = ns.db.settings
-    if type(settings.roster) ~= "table" then
-        settings.roster = {}
-    end
-    local kinds = settings.roster
-    for kind, default in pairs(Filters.DEFAULT_KINDS) do
-        if type(kinds[kind]) ~= "boolean" then
-            kinds[kind] = default
-        end
-    end
-    return kinds
-end
 
 -- Members ---------------------------------------------------------------------------------
 
@@ -128,7 +117,6 @@ local function Build()
                 trees[entry.class] = { tree = record.tr, tabs = record.tb }
             end
         end
-        entry.unknown = next(entry.specs) == nil
         members[guid] = entry
     end
 end
@@ -169,8 +157,9 @@ function Filters.Population()
     return list
 end
 
--- Forgets what it knew of the members (the roster, a profile, a build or
--- the bank ranks changed): the roster and the window show it again.
+-- Forgets what it knew of the members (the roster, a profile, what the
+-- officers set, a build or the bank ranks changed): the window shows it
+-- again.
 function Filters.Invalidate()
     members = nil
     ns.Debounce("Filters", 0.3, function()
@@ -191,21 +180,16 @@ end
 -- Whether a member passes every filter but skip's: "kind", "class" (also
 -- skips the specialization, which belongs to the class), "spec" or "level".
 function Filters.Passes(entry, skip)
-    if skip ~= "kind" and not Filters.Kinds()[entry.kind] then
+    if skip ~= "kind" and Filters.kind and entry.kind ~= Filters.kind then
         return false
     end
     if skip ~= "class" then
         if Filters.class and entry.class ~= Filters.class then
             return false
         end
-        if skip ~= "spec" and Filters.spec then
-            if Filters.spec == Filters.UNKNOWN then
-                if not entry.unknown then
-                    return false
-                end
-            elseif not entry.specs[Filters.spec] then
-                return false
-            end
+        local spec = Filters.spec
+        if skip ~= "spec" and spec and (entry.class ~= spec.class or not entry.specs[spec.tab]) then
+            return false
         end
     end
     if skip ~= "level" and Filters.level then
@@ -217,11 +201,23 @@ function Filters.Passes(entry, skip)
     return true
 end
 
--- Whether the roster shows a member (one the filters do not know yet, it
--- does).
-function Filters.Shows(guid)
-    local entry = Filters.Member(guid)
-    return entry == nil or Filters.Passes(entry)
+-- The members the window lists: those of the population that every filter
+-- lets through, by name.
+function Filters.Listed()
+    local list = {}
+    for _, entry in ipairs(Filters.Population()) do
+        if Filters.Passes(entry) then
+            list[#list + 1] = entry
+        end
+    end
+    table.sort(list, function(a, b)
+        local na, nb = (a.name or ""):lower(), (b.name or ""):lower()
+        if na ~= nb then
+            return na < nb
+        end
+        return a.guid < b.guid
+    end)
+    return list
 end
 
 -- The numbers ----------------------------------------------------------------------------
@@ -229,10 +225,11 @@ end
 -- {
 --   kinds = { main = n, alt = n, bank = n }, all = n,
 --   classes = { { class = file, count = n } ... } (most first), classTotal = n,
---   specs = { [tab or UNKNOWN] = { count, primary, secondary } } (with a
---     class only; primary: the Primary build is in it; secondary: only the
---     Secondary one), specTotal = members of the class, dual = those with
---     two specializations (they count in both),
+--   specs = { [class file] = { [tab] = { count, primary, secondary } } }
+--     (of every class, or of the class chosen; primary: the Primary build
+--     is in it; secondary: only the Secondary one), specTotal = members
+--     with a specialization (those without a build in Guild Builds count in
+--     none), dual = those with two specializations (they count in both),
 --   levels = { [range index] = n },
 -- }
 function Filters.Counts()
@@ -255,28 +252,24 @@ function Filters.Counts()
             byClass[entry.class] = (byClass[entry.class] or 0) + 1
             counts.classTotal = counts.classTotal + 1
         end
-        if Filters.class and Filters.Passes(entry, "spec") then
+        if entry.class and next(entry.specs) and Filters.Passes(entry, "spec") then
             counts.specTotal = counts.specTotal + 1
-            if entry.unknown then
-                local spec = counts.specs[Filters.UNKNOWN] or { count = 0, primary = 0, secondary = 0 }
-                counts.specs[Filters.UNKNOWN] = spec
+            local tabs = 0
+            local ofClass = counts.specs[entry.class] or {}
+            counts.specs[entry.class] = ofClass
+            for tab, groups in pairs(entry.specs) do
+                tabs = tabs + 1
+                local spec = ofClass[tab] or { count = 0, primary = 0, secondary = 0 }
+                ofClass[tab] = spec
                 spec.count = spec.count + 1
-            else
-                local tabs = 0
-                for tab, groups in pairs(entry.specs) do
-                    tabs = tabs + 1
-                    local spec = counts.specs[tab] or { count = 0, primary = 0, secondary = 0 }
-                    counts.specs[tab] = spec
-                    spec.count = spec.count + 1
-                    if groups[1] then
-                        spec.primary = spec.primary + 1
-                    else
-                        spec.secondary = spec.secondary + 1
-                    end
+                if groups[1] then
+                    spec.primary = spec.primary + 1
+                else
+                    spec.secondary = spec.secondary + 1
                 end
-                if tabs > 1 then
-                    counts.dual = counts.dual + 1
-                end
+            end
+            if tabs > 1 then
+                counts.dual = counts.dual + 1
             end
         end
         local range = Filters.LevelIndex(entry.level)
@@ -324,44 +317,36 @@ local function Changed()
     ns.Fire("FiltersChanged")
 end
 
-function Filters.SetKind(kind, shown)
-    Filters.Kinds()[kind] = shown and true or false
-    Changed()
-end
-
--- A card of the window: only that kind, or every kind ("all").
-function Filters.ShowOnly(kind)
-    local kinds = Filters.Kinds()
-    for _, each in ipairs(Filters.KINDS) do
-        kinds[each] = kind == "all" or each == kind
+-- A kind card of the window: only that kind, or every kind again when it
+-- already was; "all": every kind.
+function Filters.ToggleKind(kind)
+    if kind == "all" or Filters.kind == kind then
+        Filters.kind = nil
+    else
+        Filters.kind = kind
     end
     Changed()
 end
 
--- The card that stands for the kinds shown ("all" for every kind), or nil.
-function Filters.OnlyKind()
-    local kinds, shown = Filters.Kinds(), {}
-    for _, kind in ipairs(Filters.KINDS) do
-        if kinds[kind] then
-            shown[#shown + 1] = kind
-        end
-    end
-    if #shown == #Filters.KINDS then
-        return "all"
-    end
-    return #shown == 1 and shown[1] or nil
-end
-
--- A class: chosen, or no longer when it already was. Its specialization
--- goes either way.
+-- A class: chosen, or no longer when it already was. A specialization
+-- chosen stays only when it is of the class chosen now.
 function Filters.ToggleClass(class)
     Filters.class = Filters.class ~= class and class or nil
-    Filters.spec = nil
+    if Filters.spec and Filters.spec.class ~= Filters.class then
+        Filters.spec = nil
+    end
     Changed()
 end
 
-function Filters.ToggleSpec(tab)
-    Filters.spec = Filters.spec ~= tab and tab or nil
+-- A specialization (a class and its tree's tab): chosen, or no longer when
+-- it already was.
+function Filters.ToggleSpec(class, tab)
+    local spec = Filters.spec
+    if spec and spec.class == class and spec.tab == tab then
+        Filters.spec = nil
+    else
+        Filters.spec = { class = class, tab = tab }
+    end
     Changed()
 end
 
@@ -372,13 +357,15 @@ end
 
 -- The window's filters go when it closes.
 function Filters.ClearWindow()
-    if Filters.class or Filters.spec or Filters.level then
-        Filters.class, Filters.spec, Filters.level = nil, nil, nil
+    if Filters.kind or Filters.class or Filters.spec or Filters.level then
+        Filters.kind, Filters.class, Filters.spec, Filters.level = nil, nil, nil, nil
         Changed()
     end
 end
 
 function Filters.Init()
+    -- The roster's boxes of 0.6 and 0.7 kept their kinds there.
+    ns.db.settings.roster = nil
     local function Invalidate()
         Filters.Invalidate()
     end
@@ -386,6 +373,8 @@ function Filters.Init()
     ns.On("GuildChanged", Invalidate)
     ns.On("DataChanged", Invalidate)
     ns.On("ProfileChanged", Invalidate)
+    -- What the officers set, and who they are (Officers.lua).
+    ns.On("OfficersChanged", Invalidate)
     -- Builds, and the guild master's bank ranks, from the other addons.
     ns.Sources.OnRecordChanged(ns.Sources.BUILDS, Invalidate)
     ns.Sources.OnRecordChanged(BANKS, Invalidate)

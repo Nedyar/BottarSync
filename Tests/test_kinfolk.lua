@@ -10,6 +10,9 @@ local function GuildWindow(client)
     frame.MaximizeMinimizeFrame.MinimizeButton = H.NewObject(client, "Button")
     frame.MaximizeMinimizeFrame.MaximizeButton = H.NewObject(client, "Button")
     frame.CloseButton = H.NewObject(client, "Button")
+    -- Its OnShow is a method of its own, which its XML calls by name (so
+    -- addons hook it securely).
+    rawset(frame, "OnShow", function() end)
     return frame
 end
 
@@ -133,7 +136,7 @@ H.check(button._point[1] == "RIGHT" and button._point[2] == communities.Maximize
     and button._point[3] == "LEFT" and button._point[4] == -2, "the button sits left of the minimize button, 2 pixels away")
 button._scripts.OnMouseDown(button)
 button._scripts.OnMouseUp(button)
-communities._scripts.OnShow(communities)
+communities:OnShow()
 H.check(button._point[2] == communities.MaximizeMinimizeFrame.MinimizeButton, "it stays there as the guild window opens")
 button._scripts.OnEnter(button)
 H.eq(env.GameTooltip._text, "KinFolk", "its tooltip names KinFolk")
@@ -190,7 +193,7 @@ client, kinfolk, KF = Setup("Kin Alone")
 kinfolk.Open()
 H.eq(KF.windowButton, nil, "KinFolk opening by itself, first: no button yet")
 communities = client.env.CommunitiesFrame
-communities._scripts.OnShow(communities)
+communities:OnShow()
 H.check(KF.windowButton ~= nil, "the button goes on its window when the guild window opens")
 
 H.section("KinFolk: the key binding")

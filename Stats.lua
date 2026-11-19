@@ -1,20 +1,32 @@
 -- Stats.lua: the Statistics window, beside the game's guild window and as
--- tall as it (scrolling when its content does not fit), opened by the
--- Statistics button of the Roster tab (RosterView.lua). It can be dragged
--- elsewhere, and opens beside the guild window again. It counts the
--- guild's members (Filters.lua), and a click on a number filters the
--- roster:
---   - Characters: a card each for Mains, Alts, Banks and All; a click shows
---     only that kind in the roster (it sets the roster's boxes);
+-- tall as it, opened by the Statistics button of the Roster tab
+-- (RosterView.lua). It can be dragged elsewhere, and opens beside the guild
+-- window again. It counts the guild's members (Filters.lua), and lists
+-- right of the numbers the members the filters let through; a click on a
+-- number filters the list:
+--   - Characters: a card for All, chosen at first, and one each for Mains,
+--     Alts and Banks; one is chosen at a time, and a click on another lists
+--     only that kind (again, or All: every kind);
 --   - Classes: a bar with a section of each class's color, as wide as its
---     share; a click filters by that class (again: no longer) and shows a
---     second bar with that class's specializations, which filter the same
---     way. A character with two different specializations (dual spec)
---     counts in both, and the window says how many do;
+--     share; a click filters by that class (again: no longer);
+--   - Specializations: a bar with every class's specializations, in shades
+--     of its color, or only the chosen class's; a click filters by one
+--     (again: no longer), without choosing its class. A character with two
+--     different specializations (dual spec) counts in both, and the window
+--     says how many do; one without builds in Guild Builds, in none;
 --   - Levels: a card for each range of ten levels, and one for level 60;
 --     a click filters by it (again: no longer).
--- The class, specialization and level filters last while the window is
--- open.
+-- The filters last while the window is open. A search box above the list
+-- finds, among the members listed, those whose name or Discord username
+-- has its text, and the list's heading says how many it shows. The list
+-- has three columns, under the game's column headers: the member's name,
+-- their level, and Online or how long ago they were online (from the
+-- game's guild roster, as it tells it); a click on a header sorts by it,
+-- another the other way. The levels' cards keep their place whether the
+-- line on dual specs shows or not. The list scrolls on its own; a member's tooltip
+-- tells their rank, level and class, note and player, and for an officer a
+-- click opens their player in My data (MyData.lua). The game's roster
+-- lists everyone: see RosterView.lua for why it is not filtered.
 local _, ns = ...
 local L = ns.L
 local Filters = ns.Filters
@@ -23,7 +35,8 @@ local Stats = {}
 ns.Stats = Stats
 
 Stats.ICON = "Interface\\Icons\\INV_Misc_Spyglass_03"
-Stats.WIDTH = 400
+Stats.WIDTH = 400       -- the numbers, on the left
+Stats.LIST_WIDTH = 320  -- the list, on the right
 Stats.CONTENT_WIDTH = Stats.WIDTH - 36
 Stats.GAP = 6
 Stats.CARD_HEIGHT = 56
@@ -31,8 +44,15 @@ Stats.LEVEL_CARD_HEIGHT = 44
 Stats.BAR_HEIGHT = 24
 Stats.MIN_SECTION = 4   -- a section is never narrower, so it can be pointed at
 Stats.ICON_SIZE = 16
+Stats.ROW_HEIGHT = 20   -- a member in the list
+-- The list's columns, each with a header that sorts by it: name, level,
+-- and last online (the rest of the row).
+Stats.COLUMNS = { { key = "name", width = 150 }, { key = "level", width = 46 }, { key = "online" } }
+Stats.HEADER_HEIGHT = 19 -- the game's column headers (ColumnDisplayButtonTemplate)
 local DIM_ALPHA = 0.35  -- the sections not chosen while one is
-local UNKNOWN_ICON = 134400 -- the question mark
+local OFFLINE_COLOR = "|cff808080"
+local ONLINE_COLOR = "|cff40ff40"
+local NO_ICON = 134400 -- the question mark, for a tree whose icon is not known
 local SPEC_SHADES = { 1, 0.72, 0.5 }
 local CLICK_COLOR = { 0.1, 1, 0.1 } -- the game's green for what a click does
 
@@ -57,9 +77,6 @@ local function ClassName(class)
 end
 
 local function SpecName(class, tab)
-    if tab == Filters.UNKNOWN then
-        return L["Unknown"]
-    end
     local name = Filters.SpecInfo(class, tab)
     return name or L["Talent tree %d"]:format(tab)
 end
@@ -215,7 +232,7 @@ end
 
 -- The window -------------------------------------------------------------------------------
 
-local KIND_ORDER = { "main", "alt", "bank", "all" }
+local KIND_ORDER = { "all", "main", "alt", "bank" }
 
 local function KindLabel(kind)
     if kind == "main" then
@@ -230,10 +247,19 @@ end
 
 local function KindCardOnEnter(card)
     local lines = { { L["%d |4character:characters;"]:format(card.count) } }
+    if card.kind == "main" then
+        lines[#lines + 1] = { L["Members without Bot'tar Sync, or without a Discord username, count as mains."], 0.8, 0.8, 0.8 }
+    elseif card.kind == "alt" then
+        lines[#lines + 1] = { L["The characters their players did not tick as mains."], 0.8, 0.8, 0.8 }
+    elseif card.kind == "bank" then
+        lines[#lines + 1] = { L["Characters with a bank rank of Guild Bank Alts."], 0.8, 0.8, 0.8 }
+    end
     if card.kind == "all" then
-        lines[#lines + 1] = { L["Click to show every kind in the roster."], unpack(CLICK_COLOR) }
+        lines[#lines + 1] = { L["Click to list every kind."], unpack(CLICK_COLOR) }
+    elseif Filters.kind == card.kind then
+        lines[#lines + 1] = { L["Click again to remove the filter."], unpack(CLICK_COLOR) }
     else
-        lines[#lines + 1] = { L["Click to show only these in the roster."], unpack(CLICK_COLOR) }
+        lines[#lines + 1] = { L["Click to list only these."], unpack(CLICK_COLOR) }
     end
     ShowTooltip(card, KindLabel(card.kind), lines)
 end
@@ -250,7 +276,7 @@ local function FilterHint(chosen)
     if chosen then
         return { L["Click again to remove the filter."], unpack(CLICK_COLOR) }
     end
-    return { L["Click to filter the roster."], unpack(CLICK_COLOR) }
+    return { L["Click to filter the list."], unpack(CLICK_COLOR) }
 end
 
 local function LevelCardOnEnter(card)
@@ -260,9 +286,187 @@ local function LevelCardOnEnter(card)
     })
 end
 
+-- The list of members ---------------------------------------------------------------------------
+
+local function MemberOnEnter(row)
+    local entry = row.entry
+    if not entry then
+        return
+    end
+    GameTooltip:SetOwner(row, "ANCHOR_RIGHT")
+    GameTooltip:SetText(entry.name or "?", ClassColor(entry.class))
+    local rosterEntry = ns.Roster.members[entry.guid]
+    if rosterEntry and rosterEntry.rk then
+        GameTooltip:AddLine(rosterEntry.rk, 1, 1, 1)
+    end
+    if entry.level > 0 then
+        local level = FRIENDS_LEVEL_TEMPLATE and entry.class and FRIENDS_LEVEL_TEMPLATE:format(entry.level, ClassName(entry.class))
+        GameTooltip:AddLine(level or L["level %d"]:format(entry.level), 1, 1, 1)
+    end
+    local note = rosterEntry and rosterEntry.nt
+    if note and note ~= "" and COMMUNITY_MEMBER_NOTE_FORMAT then
+        GameTooltip:AddLine(COMMUNITY_MEMBER_NOTE_FORMAT:format(note), NORMAL_FONT_COLOR.r, NORMAL_FONT_COLOR.g, NORMAL_FONT_COLOR.b, true)
+    end
+    ns.RosterView.AddPlayerLines(entry)
+    if ns.Officers.AmI() then
+        GameTooltip:AddLine(L["Click to manage their player."], unpack(CLICK_COLOR))
+    end
+    GameTooltip:Show()
+end
+
+-- For an officer, their player in My data.
+local function MemberOnClick(row)
+    if row.entry and ns.Officers.AmI() then
+        ns.MyData.ShowCharacter(row.entry.guid)
+    end
+end
+
+-- A member's row, in the list's columns: their name, in their class's
+-- color (grey while offline), their level, and Online or how long ago they
+-- were online.
+local function InitMemberRow(row, entry)
+    if not row.Name then
+        local name, level = Stats.COLUMNS[1].width, Stats.COLUMNS[2].width
+        row.Name = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+        row.Name:SetPoint("LEFT", 4, 0)
+        row.Name:SetWidth(name - 8)
+        row.Name:SetJustifyH("LEFT")
+        row.Name:SetWordWrap(false)
+        row.Level = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+        row.Level:SetPoint("LEFT", name, 0)
+        row.Level:SetWidth(level)
+        row.Level:SetJustifyH("CENTER")
+        row.Status = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+        row.Status:SetPoint("LEFT", name + level + 4, 0)
+        row.Status:SetPoint("RIGHT", -4, 0)
+        row.Status:SetJustifyH("LEFT")
+        row.Status:SetWordWrap(false)
+        row:SetHighlightAtlas("auctionhouse-ui-row-highlight")
+        row:SetScript("OnEnter", MemberOnEnter)
+        row:SetScript("OnLeave", GameTooltip_Hide)
+        row:SetScript("OnClick", MemberOnClick)
+    end
+    row.entry = entry
+    local name = entry.name or "?"
+    if entry.online then
+        local r, g, b = ClassColor(entry.class)
+        name = ("|cff%02x%02x%02x%s|r"):format(r * 255, g * 255, b * 255, name)
+    else
+        name = OFFLINE_COLOR .. name .. "|r"
+    end
+    row.Name:SetText(name)
+    row.Level:SetText(entry.level > 0 and tostring(entry.level) or "")
+    if entry.online then
+        row.Status:SetText(ONLINE_COLOR .. L["Online"] .. "|r")
+    else
+        local ago = window.lastOnline and window.lastOnline[entry.guid]
+        row.Status:SetText(OFFLINE_COLOR .. (ago and ago.text or L["Offline"]) .. "|r")
+    end
+end
+
+-- Whether a member's name or their player's Discord username has the text
+-- searched (in small letters; "" finds everyone).
+function Stats.Matches(entry, query)
+    if query == "" then
+        return true
+    end
+    return (entry.name or ""):lower():find(query, 1, true) ~= nil
+        or (entry.dc or ""):lower():find(query, 1, true) ~= nil
+end
+
+-- How long ago each offline member was last online, read now from the
+-- game's guild roster: { [GUID] = { text = as the game's roster tells it
+-- ("3 days"), hours = about how many hours ago, to sort by } }.
+function Stats.LastOnline()
+    local texts = {}
+    if not (GetNumGuildMembers and GetGuildRosterInfo and GetGuildRosterLastOnline
+        and TimeUtil and TimeUtil.GetRecentTimeDate) then
+        return texts
+    end
+    local ok, count = pcall(GetNumGuildMembers)
+    count = ok and ns.Plain(count)
+    for i = 1, type(count) == "number" and count or 0 do
+        local guid = ns.Plain((select(18, pcall(GetGuildRosterInfo, i))))
+        if type(guid) == "string" then
+            local read, years, months, days, hours = pcall(GetGuildRosterLastOnline, i)
+            years, months, days, hours = ns.Plain(years), ns.Plain(months), ns.Plain(days), ns.Plain(hours)
+            if read and (years or months or days or hours) then
+                texts[guid] = {
+                    text = ns.Try(TimeUtil.GetRecentTimeDate, years, months, days, hours),
+                    hours = (((years or 0) * 365 + (months or 0) * 30 + (days or 0)) * 24) + (hours or 0),
+                }
+            end
+        end
+    end
+    return texts
+end
+
+-- What a column sorts by, first (the other click reverses it): names A to
+-- Z, the highest level, the members online and then the most recent.
+local function SortValue(entry, key)
+    if key == "level" then
+        return -entry.level
+    elseif key == "online" then
+        if entry.online then
+            return -1
+        end
+        local ago = window.lastOnline[entry.guid]
+        return ago and ago.hours or math.huge
+    end
+    return (entry.name or ""):lower()
+end
+
+local function SortList(listed)
+    local key, reverse = window.sortKey or "name", window.sortReverse
+    table.sort(listed, function(a, b)
+        local va, vb = SortValue(a, key), SortValue(b, key)
+        if va ~= vb then
+            if reverse then
+                return va > vb
+            end
+            return va < vb
+        end
+        -- Ties by name.
+        local na, nb = (a.name or ""):lower(), (b.name or ""):lower()
+        if na ~= nb then
+            return na < nb
+        end
+        return a.guid < b.guid
+    end)
+end
+
+-- Sorts the list by a column ("name", "level" or "online"); by the same
+-- one again, the other way.
+function Stats.SortBy(key)
+    if (window.sortKey or "name") == key then
+        window.sortReverse = not window.sortReverse
+    else
+        window.sortKey, window.sortReverse = key, false
+    end
+    Stats.Refresh()
+end
+
+-- Shows the list: the members the filters let through whose name or
+-- Discord username has the text searched, sorted, and how many they are.
+local function DrawList()
+    window.lastOnline = Stats.LastOnline()
+    local query = strtrim(window.Search:GetText() or ""):lower()
+    local listed = {}
+    for _, entry in ipairs(Filters.Listed()) do
+        if Stats.Matches(entry, query) then
+            listed[#listed + 1] = entry
+        end
+    end
+    SortList(listed)
+    window.listed = listed
+    window.MembersHeading:SetText(L["Members (%d)"]:format(#listed))
+    window.Members:SetDataProvider(CreateDataProvider(listed), ScrollBoxConstants and ScrollBoxConstants.RetainScrollPosition)
+    window.Nobody:SetShown(#listed == 0)
+end
+
 local function Create()
     window = CreateFrame("Frame", "BottarSyncStats", UIParent, "PortraitFrameTemplate")
-    window:SetWidth(Stats.WIDTH)
+    window:SetWidth(Stats.WIDTH + Stats.LIST_WIDTH)
     window:SetFrameStrata("HIGH")
     window:SetToplevel(true)
     window:EnableMouse(true)
@@ -289,33 +493,89 @@ local function Create()
     window:SetTitle(L["Guild statistics"])
     window:SetPortraitToAsset(Stats.ICON)
     window:SetScript("OnHide", function()
+        window.Search:SetText("")
+        window.Search:ClearFocus()
         Filters.ClearWindow()
         ns.MyData.Place()
     end)
 
     window.Hint = window:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     window.Hint:SetPoint("TOPLEFT", 64, -34)
-    window.Hint:SetPoint("RIGHT", -12, 0)
+    window.Hint:SetPoint("RIGHT", window, "LEFT", Stats.WIDTH - 12, 0)
     window.Hint:SetJustifyH("LEFT")
-    window.Hint:SetText(L["Click a number or a bar to filter the roster."])
+    window.Hint:SetText(L["Click a number or a bar to filter the list of members."])
 
-    local scrollFrame = CreateFrame("ScrollFrame", nil, window)
-    scrollFrame:SetPoint("TOPLEFT", 12, -64)
-    scrollFrame:SetPoint("BOTTOMRIGHT", -24, 10)
-    local scrollBar = CreateFrame("EventFrame", nil, window, "MinimalScrollBar")
-    scrollBar:SetPoint("TOPLEFT", scrollFrame, "TOPRIGHT", 6, 0)
-    scrollBar:SetPoint("BOTTOMLEFT", scrollFrame, "BOTTOMRIGHT", 6, 0)
-    content = CreateFrame("Frame", nil, scrollFrame)
+    content = CreateFrame("Frame", nil, window)
+    content:SetPoint("TOPLEFT", 12, -64)
     content:SetWidth(Stats.CONTENT_WIDTH)
     content:SetHeight(1)
-    scrollFrame:SetScrollChild(content)
-    ScrollUtil.InitScrollFrameWithScrollBar(scrollFrame, scrollBar)
-    -- The bar only while the content does not fit (the guild window may
-    -- get shorter).
-    scrollFrame:SetScript("OnSizeChanged", function()
-        Stats.UpdateScrollBar()
+    window.Content = content
+
+    -- The members, right of the numbers, as tall as the window, in the
+    -- game's inset frame.
+    window.MembersHeading = window:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    window.MembersHeading:SetPoint("TOPLEFT", Stats.WIDTH - 6, -42)
+    -- The game's search box, right of it: by name or Discord username,
+    -- among the members listed.
+    local search = CreateFrame("EditBox", nil, window, "SearchBoxTemplate")
+    search:SetSize(Stats.LIST_WIDTH - 130, 20)
+    search:SetPoint("TOPRIGHT", -14, -37)
+    search:SetAutoFocus(false)
+    search:SetMaxLetters(40)
+    if search.Instructions then
+        search.Instructions:SetText(L["Search by name or Discord"])
+    end
+    -- After the template's own (instructions and clear button).
+    search:HookScript("OnTextChanged", function()
+        if window:IsShown() then
+            DrawList()
+        end
     end)
-    window.ScrollFrame, window.ScrollBar, window.Content = scrollFrame, scrollBar, content
+    window.Search = search
+    local inset = CreateFrame("Frame", nil, window, "InsetFrameTemplate")
+    inset:SetPoint("TOPLEFT", Stats.WIDTH - 10, -64 - Stats.HEADER_HEIGHT)
+    inset:SetPoint("BOTTOMRIGHT", -8, 8)
+    window.ListInset = inset
+    -- The columns' headers, on top of it, as the game's roster has them: a
+    -- click sorts by that column, another the other way.
+    local titles = { name = L["Name"], level = L["Level"], online = L["Last online"] }
+    window.headers = {}
+    local previous
+    for i, column in ipairs(Stats.COLUMNS) do
+        local header = CreateFrame("Button", nil, window, "ColumnDisplayButtonTemplate")
+        header:SetHeight(Stats.HEADER_HEIGHT)
+        header:SetText(titles[column.key])
+        header.key = column.key
+        if i == 1 then
+            header:SetPoint("BOTTOMLEFT", inset, "TOPLEFT", 2, 0)
+        else
+            header:SetPoint("BOTTOMLEFT", previous, "BOTTOMRIGHT", -2, 0)
+        end
+        if column.width then
+            header:SetWidth(column.width + 2)
+        else
+            header:SetPoint("BOTTOMRIGHT", inset, "TOPRIGHT", -2, 0)
+        end
+        header:SetScript("OnClick", function(self)
+            Stats.SortBy(self.key)
+        end)
+        window.headers[column.key] = header
+        previous = header
+    end
+    local scrollBox = CreateFrame("Frame", nil, inset, "WowScrollBoxList")
+    scrollBox:SetPoint("TOPLEFT", 4, -4)
+    scrollBox:SetPoint("BOTTOMRIGHT", -18, 4)
+    local scrollBar = CreateFrame("EventFrame", nil, inset, "MinimalScrollBar")
+    scrollBar:SetPoint("TOPLEFT", scrollBox, "TOPRIGHT", 4, 0)
+    scrollBar:SetPoint("BOTTOMLEFT", scrollBox, "BOTTOMRIGHT", 4, 0)
+    local view = CreateScrollBoxListLinearView(0, 0, 0, 0, 0)
+    view:SetElementExtent(Stats.ROW_HEIGHT)
+    view:SetElementInitializer("Button", InitMemberRow)
+    ScrollUtil.InitScrollBoxListWithScrollBar(scrollBox, scrollBar, view)
+    window.Members = scrollBox
+    window.Nobody = inset:CreateFontString(nil, "ARTWORK", "GameFontDisable")
+    window.Nobody:SetPoint("TOP", scrollBox, "TOP", 0, -12)
+    window.Nobody:SetText(L["Nobody"])
 
     local gap = Stats.GAP
     local y = 0
@@ -325,7 +585,7 @@ local function Create()
     local width = (Stats.CONTENT_WIDTH - 3 * gap) / 4
     for i, kind in ipairs(KIND_ORDER) do
         local card = CreateCard(width, Stats.CARD_HEIGHT, "GameFontHighlightHuge", function(self)
-            Filters.ShowOnly(self.kind)
+            Filters.ToggleKind(self.kind)
         end, KindCardOnEnter)
         card.kind = kind
         card:SetPoint("TOPLEFT", (i - 1) * (width + gap), y)
@@ -387,45 +647,54 @@ local function ClassItems(counts)
     return items
 end
 
+local function IsSpecChosen(class, tab)
+    local spec = Filters.spec
+    return spec ~= nil and spec.class == class and spec.tab == tab
+end
+
+-- The specializations of the class chosen, or of every class: each class's
+-- in the class bar's order, its trees in the game's order, in shades of its
+-- color.
 local function SpecItems(counts)
-    local class = Filters.class
-    local r, g, b = ClassColor(class)
-    local tabs = {}
-    for tab in pairs(counts.specs) do
-        tabs[#tabs + 1] = tab
+    local classes = {}
+    for _, each in ipairs(counts.classes) do
+        if counts.specs[each.class] then
+            classes[#classes + 1] = each.class
+        end
     end
-    -- The trees in the game's order, the unknown last.
-    table.sort(tabs, function(a, c)
-        if a == Filters.UNKNOWN or c == Filters.UNKNOWN then
-            return c == Filters.UNKNOWN and a ~= Filters.UNKNOWN
-        end
-        return a < c
-    end)
     local items = {}
-    for _, tab in ipairs(tabs) do
-        local spec = counts.specs[tab]
-        local shade = SPEC_SHADES[tab]
-        local item = { count = spec.count, chosen = Filters.spec == tab }
-        if tab == Filters.UNKNOWN or not shade then
-            item.r, item.g, item.b, item.icon = 0.35, 0.35, 0.35, UNKNOWN_ICON
-        else
+    for _, class in ipairs(classes) do
+        local r, g, b = ClassColor(class)
+        local tabs = {}
+        for tab in pairs(counts.specs[class]) do
+            tabs[#tabs + 1] = tab
+        end
+        table.sort(tabs)
+        for _, tab in ipairs(tabs) do
+            local spec = counts.specs[class][tab]
+            local shade = SPEC_SHADES[tab] or SPEC_SHADES[#SPEC_SHADES]
             local _, icon = Filters.SpecInfo(class, tab)
-            item.r, item.g, item.b, item.icon = r * shade, g * shade, b * shade, icon or UNKNOWN_ICON
-        end
-        item.onClick = function()
-            Filters.ToggleSpec(tab)
-        end
-        item.onEnter = function(section)
-            local lines = { { L["%d |4character:characters; (%d%%)"]:format(spec.count, Percent(spec.count, counts.specTotal)) } }
-            if tab == Filters.UNKNOWN then
-                lines[#lines + 1] = { L["Without builds shared through Guild Builds."], 0.7, 0.7, 0.7 }
-            elseif spec.secondary > 0 then
-                lines[#lines + 1] = { L["%d in their primary build, %d only in their secondary one."]:format(spec.primary, spec.secondary), 0.8, 0.8, 0.8 }
+            local item = {
+                count = spec.count, chosen = IsSpecChosen(class, tab), class = class, tab = tab,
+                r = r * shade, g = g * shade, b = b * shade, icon = icon or NO_ICON,
+            }
+            item.onClick = function()
+                Filters.ToggleSpec(class, tab)
             end
-            lines[#lines + 1] = FilterHint(Filters.spec == tab)
-            ShowTooltip(section, SpecName(class, tab), lines)
+            item.onEnter = function(section)
+                local lines = {}
+                if not Filters.class then
+                    lines[#lines + 1] = { ClassName(class), r, g, b }
+                end
+                lines[#lines + 1] = { L["%d |4character:characters; (%d%%)"]:format(spec.count, Percent(spec.count, counts.specTotal)) }
+                if spec.secondary > 0 then
+                    lines[#lines + 1] = { L["%d in their primary build, %d only in their secondary one."]:format(spec.primary, spec.secondary), 0.8, 0.8, 0.8 }
+                end
+                lines[#lines + 1] = FilterHint(IsSpecChosen(class, tab))
+                ShowTooltip(section, SpecName(class, tab), lines)
+            end
+            items[#items + 1] = item
         end
-        items[#items + 1] = item
     end
     return items
 end
@@ -433,35 +702,35 @@ end
 -- Shows the numbers as they are now.
 local function Draw()
     local counts = Filters.Counts()
-    local only = Filters.OnlyKind()
+    local chosen = Filters.kind or "all"
     for _, kind in ipairs(KIND_ORDER) do
         local count = kind == "all" and counts.all or counts.kinds[kind]
-        SetCard(window.kindCards[kind], count, KindLabel(kind), only == kind)
+        SetCard(window.kindCards[kind], count, KindLabel(kind), kind == chosen)
     end
     DrawBar(window.ClassBar, ClassItems(counts))
 
+    -- The specializations, always: of the class chosen, or of every class.
     local y = window.classY
     local class = Filters.class
-    window.SpecHeading:SetShown(class ~= nil)
-    window.SpecBar:SetShown(class ~= nil)
-    window.Dual:SetShown(class ~= nil and counts.dual > 0)
+    window.SpecHeading:ClearAllPoints()
+    window.SpecHeading:SetPoint("TOPLEFT", 2, y)
     if class then
-        window.SpecHeading:ClearAllPoints()
-        window.SpecHeading:SetPoint("TOPLEFT", 2, y)
         window.SpecHeading:SetText(L["Specializations: %s"]:format(ClassName(class)))
-        y = y - 20
-        window.SpecBar:ClearAllPoints()
-        window.SpecBar:SetPoint("TOPLEFT", 0, y)
-        DrawBar(window.SpecBar, SpecItems(counts))
-        y = y - Stats.BAR_HEIGHT - 4
-        if counts.dual > 0 then
-            window.Dual:ClearAllPoints()
-            window.Dual:SetPoint("TOPLEFT", 2, y)
-            window.Dual:SetText(L["%d |4character has two different specializations and counts:characters have two different specializations and count; in both."]:format(counts.dual))
-            y = y - 16
-        end
-        y = y - 10
+    else
+        window.SpecHeading:SetText(L["Specializations"])
     end
+    y = y - 20
+    window.SpecBar:ClearAllPoints()
+    window.SpecBar:SetPoint("TOPLEFT", 0, y)
+    DrawBar(window.SpecBar, SpecItems(counts))
+    y = y - Stats.BAR_HEIGHT - 4
+    -- The line on dual specs has its place also while it does not show, so
+    -- what follows never moves.
+    window.Dual:SetShown(counts.dual > 0)
+    window.Dual:ClearAllPoints()
+    window.Dual:SetPoint("TOPLEFT", 2, y)
+    window.Dual:SetText(L["%d |4character has two different specializations and counts:characters have two different specializations and count; in both."]:format(counts.dual))
+    y = y - 16 - 10
 
     window.LevelsHeading:ClearAllPoints()
     window.LevelsHeading:SetPoint("TOPLEFT", 2, y)
@@ -474,14 +743,8 @@ local function Draw()
     end
     y = y - Stats.LEVEL_CARD_HEIGHT - 4
     content:SetHeight(-y)
-    window.contentHeight = -y
-    Stats.UpdateScrollBar()
-end
 
-function Stats.UpdateScrollBar()
-    if window and window.contentHeight then
-        window.ScrollBar:SetShown(window.contentHeight > (window.ScrollFrame:GetHeight() or 0))
-    end
+    DrawList()
 end
 
 function Stats.Refresh()
@@ -534,8 +797,10 @@ end
 function Stats.Init()
     -- It belongs to the guild window: it goes with it.
     EventUtil.ContinueOnAddOnLoaded("Blizzard_Communities", function()
-        if CommunitiesFrame and CommunitiesFrame.HookScript then
-            CommunitiesFrame:HookScript("OnHide", Stats.Hide)
+        -- A secure hook of the window's own OnHide, never HookScript: see
+        -- KinFolk.lua.
+        if CommunitiesFrame and type(CommunitiesFrame.OnHide) == "function" then
+            hooksecurefunc(CommunitiesFrame, "OnHide", Stats.Hide)
         end
     end)
 end

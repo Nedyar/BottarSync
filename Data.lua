@@ -55,6 +55,9 @@ function Data.CleanRecord(record, now)
     if key and discord and ch and Lib.IsTime(record.pt) and not (now and record.pt > now + 300) then
         clean.ak, clean.dc, clean.pt, clean.ch = key, discord, record.pt, ch
     end
+    -- What the officers set (Officers.lua): it counts only while the
+    -- character is an officer.
+    clean.ov = ns.Officers.Clean(record.ov, now)
     return clean
 end
 

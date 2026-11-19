@@ -50,14 +50,39 @@ profiled.ch = { [GUID] = true, ["Player-1-0000000B"] = false }
 key, back = Pack.ReadRecord(Pack.Reader(Pack.RecordString(GUID, profiled)))
 back.p = nil
 H.check(ns.Same(back, profiled), "record round trip with the profile: key, Discord name, time, mains and alts")
--- A record of 0.4 or before ends after the talents.
-local body0 = Pack.RecordString(GUID, record)
-local reader0 = Pack.Reader(body0)
-local length0 = reader0:UInt()
-local short = Pack.Writer()
-short:Str(body0:sub(reader0.pos, reader0.pos + length0 - 1 - 4))
-key, back = Pack.ReadRecord(Pack.Reader(short:Result()))
+-- A record cut where an older version's ends: of 0.4 or before after the
+-- talents (an empty profile is 4 bytes, and nothing set by officers 2), of
+-- 0.5 to 0.7 after the profile.
+local function Cut(guid, rec, bytes)
+    local body0 = Pack.RecordString(guid, rec)
+    local reader0 = Pack.Reader(body0)
+    local length0 = reader0:UInt()
+    local short = Pack.Writer()
+    short:Str(body0:sub(reader0.pos, reader0.pos + length0 - 1 - bytes))
+    return Pack.ReadRecord(Pack.Reader(short:Result()))
+end
+key, back = Cut(GUID, record, 4 + 2)
 H.check(key == GUID and back.l == 60 and back.ak == nil and back.ch == nil, "a record from before 0.5 reads, without a profile")
+key, back = Cut(GUID, profiled, 2)
+H.check(key == GUID and back.dc == "solo.name" and back.ch[GUID] == true and back.ov == nil,
+    "a record of 0.5 to 0.7 reads, with its profile and nothing set by officers")
+-- With what the officers set (0.8).
+local officered = H.DeepCopy(profiled)
+officered.ov = {
+    r = { ["old.name"] = { n = "new.name", t = now - 3 }, ["kept"] = { n = "kept", t = now - 2 } },
+    a = { ["Player-1-0000000B"] = { d = "new.name", m = true, t = now - 1 },
+        ["Player-1-0000000C"] = { d = false, m = false, t = now } },
+}
+key, back = Pack.ReadRecord(Pack.Reader(Pack.RecordString(GUID, officered)))
+back.p = nil
+H.check(ns.Same(back, officered), "record round trip with what the officers set: renames, and whose each character is")
+key, back = Pack.ReadRecord(Pack.Reader(Pack.RecordString(GUID, profiled)))
+H.eq(back.ov, nil, "a record that sets nothing reads without it")
+local crowded = H.DeepCopy(officered)
+for i = 1, Pack.LIMITS.assignments + 1 do
+    crowded.ov.a[("Player-1-%08X"):format(5000 + i)] = { d = "x.y", m = false, t = now }
+end
+H.check(not pcall(Pack.ReadRecord, Pack.Reader(Pack.RecordString(GUID, crowded))), "one that sets too many characters is refused")
 local crowd = H.DeepCopy(profiled)
 for i = 1, 61 do
     crowd.ch[("Player-1-%08X"):format(1000 + i)] = false
@@ -125,6 +150,24 @@ clean = Data.CleanRecord((function()
 end)(), now)
 H.check(clean.ch["not a GUID"] == nil and clean.ch["Player-1-0000000C"] == nil and clean.ch[GUID] == true,
     "characters that are not GUIDs with true or false are left out")
+clean = Data.CleanRecord(officered, now)
+H.check(ns.Same(clean.ov, officered.ov), "what the officers set passes")
+clean = Data.CleanRecord((function()
+    local odd = H.DeepCopy(officered)
+    odd.ov.r["Not A Name"] = { n = "fine", t = now }
+    odd.ov.r["fine.too"] = { n = "Bad Name", t = now }
+    odd.ov.a["not a GUID"] = { d = "x.y", m = true, t = now }
+    odd.ov.a["Player-1-0000000D"] = { d = "x.y", m = true, t = now + 3600 }
+    odd.ov.a["Player-1-0000000E"] = { d = "Bad Name", m = true, t = now }
+    odd.ov.a["Player-1-0000000C"].m = true
+    return odd
+end)(), now)
+H.check(clean.ov.r["Not A Name"] == nil and clean.ov.r["fine.too"] == nil and clean.ov.r["old.name"].n == "new.name",
+    "renames from or to a name Discord could not have are left out")
+H.check(clean.ov.a["not a GUID"] == nil and clean.ov.a["Player-1-0000000D"] == nil and clean.ov.a["Player-1-0000000E"] == nil
+    and clean.ov.a["Player-1-0000000B"].d == "new.name", "and characters that are not GUIDs, set in the future or to such a name")
+H.check(clean.ov.a["Player-1-0000000C"].d == false and clean.ov.a["Player-1-0000000C"].m == false, "nobody's is nobody's main")
+H.eq(Data.CleanRecord(record, now).ov, nil, "a record that sets nothing has none")
 
 H.section("Profile: Discord names")
 local Profile = ns.Profile
@@ -174,6 +217,25 @@ who = Profile.Resolve({
     [B1] = Rec("KeyBBBBBBBBB", "player", 150, { [B1] = true, [A1] = false }),
 })
 H.check(not who[A1].main and who[B1].main, "the player's newest profile wins, from any of their accounts")
+-- What the officers set: "first" renamed to "player" (account B's name),
+-- A2 set to C's player as a main, B1 to nobody, D1 (no record) to the
+-- renamed player as an alt, and E1, which C added, to C as a main.
+who = Profile.Resolve({
+    [A1] = Rec("KeyAAAAAAAAA", "first", 100, { [A1] = true, [A2] = false }),
+    [A2] = Rec("KeyAAAAAAAAA", "first", 100, { [A1] = true, [A2] = false }),
+    [B1] = Rec("KeyBBBBBBBBB", "player", 150, { [B1] = true, [A1] = false }),
+    [C1] = Rec("KeyCCCCCCCCC", "other", 300, { [C1] = false, [E1] = false }),
+}, {
+    r = { first = { n = "player", t = 400 } },
+    a = { [A2] = { d = "other", m = true, t = 400 }, [B1] = { d = false, m = false, t = 400 },
+        [D1] = { d = "player", m = false, t = 400 }, [E1] = { d = "other", m = true, t = 400 } },
+})
+H.check(who[A1].dc == "player" and not who[A1].set, "a renamed player's characters go by the new name")
+H.check(not who[A1].main, "and count as one player with the other account that has it: its newest list decides")
+H.check(who[A2].dc == "other" and who[A2].main and who[A2].set and not who[A2].pending, "a character set to another player is theirs")
+H.eq(who[B1], nil, "one set to nobody is nobody's, although its own profile says otherwise")
+H.check(who[D1] and who[D1].dc == "player" and who[D1].main == false and not who[D1].pending, "one without a record, set to a player")
+H.check(who[E1].main and not who[E1].pending, "one a player added and an officer set: not pending, as the officer says")
 
 H.section("Data: saved form")
 local db = ns.db
