@@ -150,7 +150,7 @@ local function PlayerCharacters(discord)
         end)
         local names = {}
         for i, entry in ipairs(list) do
-            names[i] = ColoredName(entry)
+            names[i] = entry.pending and L["%s (pending)"]:format(ColoredName(entry)) or ColoredName(entry)
         end
         return names
     end
@@ -204,7 +204,8 @@ local function RowOnEnter(row)
     if entry and entry.dc then
         local mains, alts = PlayerCharacters(entry.dc)
         GameTooltip:AddLine(" ")
-        GameTooltip:AddLine(L["Discord: %s"]:format(entry.dc), unpack(DISCORD_COLOR))
+        local discord = entry.pending and L["Discord: %s (pending)"] or L["Discord: %s"]
+        GameTooltip:AddLine(discord:format(entry.dc), unpack(DISCORD_COLOR))
         if #mains > 0 then
             GameTooltip:AddLine(L["Mains: %s"]:format(table.concat(mains, ", ")), 1, 1, 1, true)
         end

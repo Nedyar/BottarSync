@@ -8,8 +8,9 @@
 --       members = { [GUID] = record (see Pack.lua) plus seen and fh },
 --       roster = { t = time of the last complete read, m = { [GUID] = roster
 --           entry (see LibGuildSync's Roster.lua) } } } },
---   settings = { locale, export },
---   own = { [GUID] = { sentFP, sentGuild } },
+--   settings = { locale, export, roster = { main, alt, bank } },
+--   own = { [GUID] = { sentFP, sentGuild, profile = the profile of the
+--       player this character accepted to be (as account's), or nil } },
 --   account = the WoW account's profile: { key, dc = Discord name, pt =
 --       time of its last change, ch = { [GUID] = true for a main, false for
 --       an alt } }, or { ch = {} } until the player gives a Discord name
@@ -17,7 +18,7 @@
 -- }
 --
 -- Since 0.4.0 a record holds the character alone: name, realm, level, class,
--- race, sex and faction, and since 0.5.0 its WoW account's profile (the
+-- race, sex and faction, and since 0.5.0 the profile it goes by (the
 -- player's Discord name, their mains and alts: Profile.lua). Professions, items worn and talents are shared by
 -- the addons that own them (see Sources.lua). Records from earlier versions
 -- still carry them; they are dropped when read.
@@ -95,16 +96,11 @@ function Data.SanitizeExtra(clean, db)
     end
     for _, state in pairs(clean.own) do
         state.hinted = nil
+        -- The profile of the player a character accepted to be, whole or none.
+        state.profile = ns.Profile.CleanProfile(state.profile)
     end
     -- The WoW account's profile (Profile.lua), whole or empty.
-    local account = type(db.account) == "table" and db.account or {}
-    local key, discord = ns.Profile.CleanKey(account.key), ns.Profile.CleanDiscord(account.dc)
-    local ch = ns.Profile.CleanCharacters(account.ch, ns.Pack.LIMITS.profile)
-    if key and discord and ch and Lib.IsTime(account.pt) then
-        clean.account = { key = key, dc = discord, pt = account.pt, ch = ch }
-    else
-        clean.account = { ch = {} }
-    end
+    clean.account = ns.Profile.CleanProfile(db.account) or { ch = {} }
 end
 
 -- After a complete roster read, the roster is kept for the bot's file: it is

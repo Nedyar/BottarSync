@@ -18,7 +18,11 @@ guild's other addons share.
   are mains; the others are alts, and a player may have several mains. The
   name and the mains belong to the WoW account: every character of the
   account carries them, and characters on another account that go by the
-  same Discord name count as the same player.
+  same Discord name count as the same player. From the same window a player
+  adds any other character of the guild that is nobody's yet: it counts as
+  theirs at once, pending, and when it logs in it is asked whether it is
+  theirs. Accepting makes only that character theirs, not the rest of its
+  WoW account; one that already has another player's name stays theirs.
 - **Filters and numbers on the guild roster.** On the guild window's Roster
   tab, three boxes right of Offline members choose what the list shows:
   Mains and Alts (ticked at first) and Banks (bank characters, by Guild

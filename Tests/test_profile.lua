@@ -45,6 +45,7 @@ local function Globals()
         },
         ACCEPT = "Accept",
         SAVE = "Save",
+        DECLINE = "Decline",
     }
 end
 
@@ -80,10 +81,24 @@ local function Who(client)
     return client.ns.Profile.Resolve(records)
 end
 
+-- The player's list as a client's window shows it: the item of a GUID.
+local function ItemOf(client, guid)
+    for _, item in ipairs(client.ns.Profile.MyCharacters()) do
+        if item.guid == guid then
+            return item
+        end
+    end
+end
+
 local world = H.NewWorld({ seed = 61, communities = GuildWindow, senderFormat = "short", strictWhispers = true })
 -- An officer who stays online all along, and writes the bot's file.
 local officer = world:NewClient("Kantrul Steadyshot", { globals = Globals(), rank = "Officer", rankIndex = 1 })
 local main = world:NewClient("Nedyar Cazador", { globals = Globals(), level = 37 })
+-- For "adding characters" below: a member without the addon, and two
+-- characters on other WoW accounts (their own saved data) that log in later.
+local _, oldFriend = world:AddMember("Viejo Amigo", nil, { class = "MAGE", level = 50 })
+local other = world:NewClient("Otra Cuenta", { globals = Globals(), level = 20 })
+local rejecter = world:NewClient("Rechaza Todo", { globals = Globals(), level = 10 })
 world:Login(officer)
 world:RunFor(5)
 
@@ -270,10 +285,116 @@ world:Logout(alt)
 third.saved = nil
 world:Login(third)
 world:RunFor(25)
-H.check(not third.ns.DiscordPrompt.IsShown(), "it is not asked")
-H.eq(third.ns.Profile.Account().key, alt.ns.Profile.Account().key, "it took the account's profile from the guild")
-H.eq(third.ns.Profile.Account().dc, "from.elsewhere", "with its Discord name")
+local thirdBox = third.ns.DiscordPrompt.Frame()
+H.check(third.ns.DiscordPrompt.IsShown() and thirdBox.mode == "claim", "it is asked whether it is the player's who lists it")
+H.check(thirdBox.Text._text:find("from.elsewhere", 1, true) and thirdBox.Text._text:find("as an alt", 1, true),
+    "naming them, and as what")
+Click(thirdBox.Accept)
+H.check(not third.ns.DiscordPrompt.IsShown(), "accepted, the box closes")
+local altKey = alt.ns.Profile.Account().key
+H.eq(third.ns.Profile.Own().key, altKey, "it goes by the player's profile again")
+H.eq(third.ns.Profile.Own().dc, "from.elsewhere", "with its Discord name")
+H.eq(third.ns.Profile.Account().key, nil, "only this character: the account on this computer still has none")
+world:RunFor(10)
+H.check(Who(officer)[third.guid].dc == "from.elsewhere" and not Who(officer)[third.guid].pending, "for the guild it is the player's")
+world:Logout(third)
 Errors(world, "another computer")
+
+H.section("Profile: adding characters")
+world:Login(alt)
+world:RunFor(10)
+alt.ns.MyData.Toggle()
+local altWindow = alt.ns.MyData.Window()
+local search, results = altWindow.Search, altWindow.Results
+-- The names the search box shows for a text.
+local function Found(text)
+    local names = {}
+    for _, item in ipairs(alt.ns.MyData.Matches(text) or {}) do
+        names[#names + 1] = item.name
+    end
+    return table.concat(names, " / ")
+end
+H.check(not results:IsShown(), "nothing to show while nothing is typed")
+H.eq(Found("a"), "Viejo Amigo / Kantrul Steadyshot / Otra Cuenta / Rechaza Todo",
+    "it finds the guild's characters that are no one's, those with a word that starts with it first")
+H.eq(Found("NEDYAR"), "", "not the player's own, in any case")
+Type(search, "OTRA")
+H.check(results:IsShown() and results.rows[1]:IsShown() and results.rows[1].Text._text:find("Otra Cuenta", 1, true)
+    and not (results.rows[2] and results.rows[2]:IsShown()), "typing shows the matches above the box")
+Type(search, "zzz")
+H.check(results:IsShown() and results.Note._text == "No character to add by that name.", "or says there is none")
+Type(search, "")
+H.check(not results:IsShown(), "and goes away when the box is emptied")
+Type(search, "a")
+search._scripts.OnArrowPressed(search, "DOWN")
+search._scripts.OnArrowPressed(search, "DOWN")
+search._scripts.OnArrowPressed(search, "DOWN")
+H.check(results.rows[4].Selected:IsShown() and not results.rows[1].Selected:IsShown(), "the arrows choose among them")
+search._scripts.OnArrowPressed(search, "DOWN")
+H.check(results.rows[1].Selected:IsShown(), "back to the first after the last")
+search._scripts.OnEnterPressed(search)
+local added = ItemOf(alt, oldFriend)
+H.check(added ~= nil and search:GetText() == "" and not results:IsShown(), "Enter adds the chosen one and empties the box")
+H.check(added and added.state == "pending" and added.main == false, "an added character is in the list, pending, an alt")
+local altView = alt.ns.MyData.Window().ScrollBox._view
+local addedRow = H.NewObject(alt, "Frame")
+altView.init(addedRow, added)
+H.check(addedRow.Name._text:find("(pending)", 1, true) and addedRow.Remove:IsShown(), "shown as pending, with a button to take it out")
+alt.ns.Profile.SetMain(oldFriend, true)
+H.check(ItemOf(alt, oldFriend).main, "it can be a main")
+world:RunFor(10)
+local friend = Who(officer)[oldFriend]
+H.check(friend and friend.dc == "from.elsewhere" and friend.main and friend.pending,
+    "the guild counts it at once as the player's main, pending (it has no Bot'tar Sync)")
+-- Two characters on other WoW accounts that never gave a username.
+H.check(alt.ns.Profile.Add(other.guid) and alt.ns.Profile.Add(rejecter.guid), "characters on other WoW accounts too")
+H.check(not alt.ns.Profile.Add(other.guid), "each once")
+world:RunFor(10)
+-- One accepts (the alt stays online, on its own WoW account).
+world:Login(other)
+world:RunFor(25)
+local otherBox = other.ns.DiscordPrompt.Frame()
+H.check(other.ns.DiscordPrompt.IsShown() and otherBox.mode == "claim", "an added character is asked when it logs in")
+Click(otherBox.Accept)
+world:RunFor(10)
+local otherRecord = RecordOf(officer, other)
+H.check(otherRecord.dc == "from.elsewhere" and otherRecord.ak == altKey, "accepted, it goes by the player's profile")
+H.check(not Who(officer)[other.guid].pending, "and is no longer pending")
+H.eq(other.ns.Profile.Account().key, nil, "its WoW account does not")
+-- From it, the player manages every character of theirs.
+H.check(ItemOf(other, main.guid) and ItemOf(other, alt.guid) and ItemOf(other, third.guid) and ItemOf(other, other.guid)
+    and ItemOf(other, oldFriend).state == "pending", "from it, the player sees every character of theirs")
+other.ns.Profile.SetMain(other.guid, true)
+world:RunFor(10)
+H.check(Who(officer)[other.guid].main, "and changes them")
+world:Logout(other)
+-- Another character of that WoW account stays out of it.
+local second = world:NewClient("Otra Segunda", { globals = Globals(), saved = other.saved })
+world:Login(second)
+world:RunFor(25)
+H.check(second.ns.DiscordPrompt.IsShown() and second.ns.DiscordPrompt.Frame().mode == "name",
+    "another character of that account is asked for its own username")
+world:Logout(second)
+-- The other one rejects, and gives its own username.
+world:Login(rejecter)
+world:RunFor(25)
+local rejectBox = rejecter.ns.DiscordPrompt.Frame()
+H.check(rejecter.ns.DiscordPrompt.IsShown() and rejectBox.mode == "claim", "the other one is asked too")
+Click(rejectBox.Reject)
+H.check(rejecter.ns.DiscordPrompt.IsShown() and rejectBox.mode == "name", "rejecting asks for its own username")
+Type(rejectBox.Input, "otro.jugador")
+Click(rejectBox.Accept)
+world:RunFor(10)
+local rejected = Who(officer)[rejecter.guid]
+H.check(rejected.dc == "otro.jugador" and not rejected.pending, "it is its own player's")
+world:Logout(rejecter)
+H.eq(ItemOf(alt, rejecter.guid).state, "other", "the player's list shows it as another player's")
+H.check(Who(alt)[rejecter.guid].dc == "otro.jugador", "and does not count it")
+H.check(alt.ns.Profile.Remove(rejecter.guid) and ItemOf(alt, rejecter.guid) == nil, "it can be taken out")
+H.eq(Found("Rechaza"), "", "the search leaves out other players' characters")
+-- The other character's acceptance, seen from the player's own.
+H.eq(ItemOf(alt, other.guid).state, "mine", "the one that accepted is the player's")
+Errors(world, "adding characters")
 
 H.section("Profile: joining a guild")
 local newcomer = world:NewClient("New Comer", { globals = Globals() })
@@ -297,6 +418,10 @@ end
 H.check(byName["Nedyar Cazador"].discord == "from.elsewhere" and byName["Nedyar Cazador"].main == true,
     "each character has its player's Discord name, and whether it is a main")
 H.check(byName["Nedyar Tercero"].discord == "from.elsewhere" and byName["Nedyar Tercero"].main == false, "or an alt")
+H.check(byName["Nedyar Cazador"].pending == false and byName["Otra Cuenta"].discord == "from.elsewhere"
+    and byName["Otra Cuenta"].pending == false, "not pending once theirs")
+H.check(byName["Viejo Amigo"].discord == "from.elsewhere" and byName["Viejo Amigo"].main == true and byName["Viejo Amigo"].pending == true,
+    "an added character that has not accepted: its player's, pending")
 H.check(byName["Kantrul Steadyshot"].discord == H.NULL and byName["Kantrul Steadyshot"].main == H.NULL,
     "both are null for a member who gave no name")
 Errors(world, "the bot's file")

@@ -11,11 +11,14 @@
 -- Guild Settings button is widened to show its whole text, which does not
 -- fit in some languages.
 --
--- The window lists the player's characters in the guild: those of this WoW
--- account that ever logged in with Bot'tar Sync, and those of their other
--- accounts that go by the same Discord name. Each has a box: ticked it is a
--- main, unticked an alt; a change is shared at once. A row too narrow for
--- its text shows it whole in a tooltip.
+-- The window lists the player's characters in the guild (Profile.lua's
+-- MyCharacters): those that go by their profile, from any of them, and
+-- those the player added from the guild roster (the search box at the
+-- bottom: the characters whose name has what is typed show above it),
+-- pending until each logs in and accepts, or another player's when it
+-- already goes by another profile; the added ones can be taken out again.
+-- Each has a box: ticked it is a main, unticked an alt; a change is shared
+-- at once. A row too narrow for its text shows it whole in a tooltip.
 local _, ns = ...
 local L = ns.L
 
@@ -32,26 +35,25 @@ MyData.TEXT_PADDING = 40
 MyData.WIDTH = 360
 MyData.HEIGHT = 420
 MyData.ROW_HEIGHT = 26
+-- The search box's results: at most this many, one under another.
+MyData.MAX_RESULTS = 8
+MyData.RESULT_HEIGHT = 20
 
 local window, guildButton
 local settingsWidth -- the game's own width for its Guild Settings button
 
 -- Names and colors --------------------------------------------------------------------
 
-local function ClassFile(classID)
-    if not classID or classID == 0 then
-        return nil
-    end
-    local info = C_CreatureInfo and ns.Try(C_CreatureInfo.GetClassInfo, classID)
-    return ns.CanRead(info) and info.classFile or nil
-end
-
-local function ColoredName(record)
-    local name = record.n or "?"
-    local file = ClassFile(record.c)
-    local color = file and C_ClassColor and ns.Try(C_ClassColor.GetClassColor, file)
+-- A character's name in its class's color, and its level ({ name, class
+-- file, level }, as Profile.lua lists them).
+local function NameAndLevel(item)
+    local name = item.name or "?"
+    local color = item.class and C_ClassColor and ns.Try(C_ClassColor.GetClassColor, item.class)
     if color and color.WrapTextInColorCode then
-        return color:WrapTextInColorCode(name)
+        name = color:WrapTextInColorCode(name)
+    end
+    if item.level and item.level > 0 then
+        name = name .. " |cff999999" .. L["level %d"]:format(item.level) .. "|r"
     end
     return name
 end
@@ -61,7 +63,7 @@ end
 local function UpdateSave()
     local name = ns.Profile.CleanDiscord(window.Input:GetText())
     local text = strtrim(window.Input:GetText() or "")
-    window.Save:SetEnabled(name ~= nil and name ~= ns.Profile.Account().dc)
+    window.Save:SetEnabled(name ~= nil and name ~= ns.Profile.Own().dc)
     window.Invalid:SetShown(name == nil and text ~= "")
 end
 
@@ -71,7 +73,7 @@ local function SaveName()
         return
     end
     window.Input:ClearFocus()
-    if name ~= ns.Profile.Account().dc then
+    if name ~= ns.Profile.Own().dc then
         ns.Profile.SetDiscord(name)
     end
 end
@@ -102,50 +104,227 @@ local function InitRow(row, item)
         row:SetScript("OnLeave", GameTooltip_Hide)
         row.Name = row:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
         row.Name:SetPoint("LEFT", 6, 0)
-        row.Name:SetPoint("RIGHT", -120, 0)
+        row.Name:SetPoint("RIGHT", -140, 0)
         row.Name:SetJustifyH("LEFT")
         row.Name:SetWordWrap(false)
         row.Main = CreateFrame("CheckButton", nil, row, "UICheckButtonTemplate")
         row.Main:SetSize(24, 24)
-        row.Main:SetPoint("RIGHT", -64, 0)
+        row.Main:SetPoint("RIGHT", -84, 0)
         row.Main:SetScript("OnClick", function(self)
             ns.Profile.SetMain(self.guid, self:GetChecked())
         end)
         row.Kind = row:CreateFontString(nil, "ARTWORK", "GameFontNormal")
         row.Kind:SetPoint("LEFT", row.Main, "RIGHT", 2, 0)
         row.Kind:SetJustifyH("LEFT")
+        -- Takes an added character out of the list.
+        row.Remove = CreateFrame("Button", nil, row)
+        row.Remove:SetSize(16, 16)
+        row.Remove:SetPoint("RIGHT", -4, 0)
+        row.Remove.Icon = row.Remove:CreateTexture(nil, "ARTWORK")
+        row.Remove.Icon:SetAllPoints()
+        row.Remove.Icon:SetAtlas("common-icon-redx")
+        row.Remove:SetHighlightAtlas("common-icon-redx", "ADD")
+        row.Remove:SetScript("OnClick", function(self)
+            ns.Profile.Remove(self.guid)
+        end)
+        row.Remove:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(L["Remove from your characters"])
+            GameTooltip:Show()
+        end)
+        row.Remove:SetScript("OnLeave", GameTooltip_Hide)
     end
-    local level = item.record.l and item.record.l > 0 and item.record.l or nil
-    local text = ColoredName(item.record)
-    if level then
-        text = text .. " |cff999999" .. L["level %d"]:format(level) .. "|r"
-    end
+    local text = NameAndLevel(item)
     if item.own then
         text = text .. " |cff999999" .. L["(this character)"] .. "|r"
+    elseif item.state == "pending" then
+        text = text .. " |cff999999" .. L["(pending)"] .. "|r"
+    elseif item.state == "other" then
+        text = text .. " |cffff6060" .. L["(another player's)"] .. "|r"
     end
     row.Name:SetText(text)
     row.Main.guid = item.guid
     row.Main:SetChecked(item.main)
-    row.Main:SetEnabled(ns.Profile.HasName())
-    row.Kind:SetText(item.main and L["Main"] or L["Alt"])
+    row.Main:SetEnabled(ns.Profile.HasName() and item.state ~= "other")
+    row.Main:SetShown(item.state ~= "other")
+    row.Kind:SetText(item.state ~= "other" and (item.main and L["Main"] or L["Alt"]) or "")
     if item.main then
         row.Kind:SetTextColor(1, 0.82, 0)
     else
         row.Kind:SetTextColor(0.6, 0.6, 0.6)
     end
+    row.Remove.guid = item.guid
+    row.Remove:SetShown(item.state ~= "mine")
 end
 
--- Shows what the account's profile says now.
+-- Searching characters to add -----------------------------------------------------------------
+
+-- The guild's characters that can be added whose name has the text typed
+-- (any case): those with a word that starts with it first, then the rest,
+-- each by name. nil while nothing is typed.
+function MyData.Matches(text)
+    local query = strtrim(text or ""):lower()
+    if query == "" then
+        return nil
+    end
+    local first, rest = {}, {}
+    for _, item in ipairs(ns.Profile.Addable()) do
+        local name = item.name:lower()
+        local at = name:find(query, 1, true)
+        if at == 1 or (at and name:sub(at - 1, at - 1) == " ") then
+            first[#first + 1] = item
+        elseif at then
+            rest[#rest + 1] = item
+        end
+    end
+    for _, item in ipairs(rest) do
+        first[#first + 1] = item
+    end
+    return first
+end
+
+local UpdateResults
+
+local function AddResult(item)
+    if not item then
+        return
+    end
+    local _, why = ns.Profile.Add(item.guid)
+    if why == "full" then
+        ns.Print(L["Your list holds up to %d characters."], ns.Pack.LIMITS.profile)
+    end
+    window.Search:SetText("")
+    window.Search:ClearFocus()
+    UpdateResults()
+end
+
+local function ResultRow(i)
+    local results = window.Results
+    local row = results.rows[i]
+    if not row then
+        row = CreateFrame("Button", nil, results)
+        row:SetHeight(MyData.RESULT_HEIGHT)
+        row:SetPoint("TOPLEFT", 6, -6 - (i - 1) * MyData.RESULT_HEIGHT)
+        row:SetPoint("RIGHT", -6, 0)
+        row.Text = row:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+        row.Text:SetPoint("LEFT", 4, 0)
+        row.Text:SetPoint("RIGHT", -4, 0)
+        row.Text:SetJustifyH("LEFT")
+        row.Text:SetWordWrap(false)
+        row.Selected = row:CreateTexture(nil, "BACKGROUND")
+        row.Selected:SetAllPoints()
+        row.Selected:SetTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight")
+        row.Selected:SetBlendMode("ADD")
+        row.Selected:SetAlpha(0.5)
+        row:SetHighlightTexture("Interface\\QuestFrame\\UI-QuestTitleHighlight", "ADD")
+        row:SetScript("OnClick", function(self)
+            AddResult(self.item)
+        end)
+        results.rows[i] = row
+    end
+    return row
+end
+
+-- Shows the characters that match what is typed, above the search box.
+function UpdateResults()
+    local results = window.Results
+    local matches = MyData.Matches(window.Search:GetText())
+    window.matches = matches
+    if not matches then
+        results:Hide()
+        return
+    end
+    local shown = math.min(#matches, MyData.MAX_RESULTS)
+    window.selected = shown > 0 and math.max(1, math.min(window.selected or 1, shown)) or nil
+    for i = 1, shown do
+        local row = ResultRow(i)
+        row.item = matches[i]
+        row.Text:SetText(NameAndLevel(matches[i]))
+        row.Selected:SetShown(i == window.selected)
+        row:Show()
+    end
+    for i = shown + 1, #results.rows do
+        results.rows[i].item = nil
+        results.rows[i]:Hide()
+    end
+    local lines = shown
+    results.Note:ClearAllPoints()
+    results.Note:SetPoint("TOPLEFT", 10, -6 - shown * MyData.RESULT_HEIGHT)
+    if #matches == 0 then
+        results.Note:SetText(L["No character to add by that name."])
+        lines = 1
+    elseif #matches > shown then
+        results.Note:SetText(L["%d more: keep typing."]:format(#matches - shown))
+        lines = shown + 1
+    else
+        results.Note:SetText("")
+    end
+    results:SetHeight(lines * MyData.RESULT_HEIGHT + 12)
+    results:Show()
+end
+
+-- Up and down choose among the results, Enter adds the chosen one.
+local function SearchArrow(_, key)
+    local count = window.matches and math.min(#window.matches, MyData.MAX_RESULTS) or 0
+    if count == 0 then
+        return
+    end
+    if key == "UP" then
+        window.selected = window.selected > 1 and window.selected - 1 or count
+    elseif key == "DOWN" then
+        window.selected = window.selected < count and window.selected + 1 or 1
+    end
+    UpdateResults()
+end
+
+local function CreateSearch()
+    -- The game's search box, with its magnifying glass and clear button.
+    local search = CreateFrame("EditBox", nil, window, "SearchBoxTemplate")
+    search:SetSize(MyData.WIDTH - 44, 20)
+    search:SetPoint("BOTTOMLEFT", 22, 14)
+    search:SetAutoFocus(false)
+    search:SetMaxLetters(40)
+    if search.Instructions then
+        search.Instructions:SetText(L["Add a character: type their name"])
+    end
+    -- After the template's own (instructions and clear button).
+    search:HookScript("OnTextChanged", function(_, userInput)
+        if userInput then
+            window.selected = 1
+        end
+        UpdateResults()
+    end)
+    search:SetScript("OnEnterPressed", function()
+        AddResult(window.matches and window.selected and window.matches[window.selected])
+    end)
+    search:SetScript("OnArrowPressed", SearchArrow)
+    window.Search = search
+
+    -- The matches, in a tooltip-like box above it.
+    local results = CreateFrame("Frame", nil, window, "TooltipBackdropTemplate")
+    results:SetPoint("BOTTOMLEFT", search, "TOPLEFT", -8, 2)
+    results:SetPoint("BOTTOMRIGHT", search, "TOPRIGHT", 2, 2)
+    results:SetFrameLevel(window:GetFrameLevel() + 20)
+    results:EnableMouse(true)
+    results.rows = {}
+    results.Note = results:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
+    results:Hide()
+    window.Results = results
+end
+
+-- Shows what the character's profile says now.
 local function Draw()
-    local account = ns.Profile.Account()
+    local profile = ns.Profile.Own()
     if not window.Input:HasFocus() then
-        window.Input:SetText(account.dc or "")
+        window.Input:SetText(profile.dc or "")
     end
     UpdateSave()
     window.NoName:SetShown(not ns.Profile.HasName())
+    window.Search:SetEnabled(ns.Profile.HasName())
     local items = ns.Profile.MyCharacters()
     window.items = items
     window.ScrollBox:SetDataProvider(CreateDataProvider(items))
+    UpdateResults()
 end
 
 function MyData.Refresh()
@@ -192,7 +371,7 @@ local function CreateWindow()
     window.Input:SetScript("OnEnterPressed", SaveName)
     window.Input:SetScript("OnEscapePressed", function(self)
         self:ClearFocus()
-        self:SetText(ns.Profile.Account().dc or "")
+        self:SetText(ns.Profile.Own().dc or "")
     end)
     window.Save = CreateFrame("Button", nil, window, "UIPanelButtonTemplate")
     window.Save:SetSize(90, 22)
@@ -214,10 +393,10 @@ local function CreateWindow()
     window.Hint:SetPoint("TOPLEFT", window.Heading, "BOTTOMLEFT", 0, -4)
     window.Hint:SetPoint("RIGHT", -14, 0)
     window.Hint:SetJustifyH("LEFT")
-    window.Hint:SetText(L["Tick your mains; the others are alts. Your other characters show up here once they log in with Bot'tar Sync."])
+    window.Hint:SetText(L["Tick your mains; the others are alts. Add the ones missing with the search box below: they count at once, pending until they log in and accept."])
     local scrollBox = CreateFrame("Frame", nil, window, "WowScrollBoxList")
     scrollBox:SetPoint("TOPLEFT", 12, -150)
-    scrollBox:SetPoint("BOTTOMRIGHT", -28, 12)
+    scrollBox:SetPoint("BOTTOMRIGHT", -28, 44)
     local scrollBar = CreateFrame("EventFrame", nil, window, "MinimalScrollBar")
     scrollBar:SetPoint("TOPLEFT", scrollBox, "TOPRIGHT", 6, 0)
     scrollBar:SetPoint("BOTTOMLEFT", scrollBox, "BOTTOMRIGHT", 6, 0)
@@ -231,8 +410,12 @@ local function CreateWindow()
     window.NoName:SetWidth(MyData.WIDTH - 60)
     window.NoName:SetText(L["Save your Discord username first."])
 
+    -- The search box to add the guild's characters.
+    CreateSearch()
+
     ns.On("DataChanged", MyData.Refresh)
     ns.On("ProfileChanged", MyData.Refresh)
+    ns.On("RosterUpdated", MyData.Refresh)
 end
 
 -- Opens the window, beside the guild window, or closes it.

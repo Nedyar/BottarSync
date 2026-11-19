@@ -88,7 +88,7 @@ H.eq(table.concat(names, ","), "Alice Smith,Carol White,Dan Brown,Erin Gray", "m
 H.section("Export: a member with the addon")
 local a = Find(guild.members, "name", "Alice Smith")
 H.eq(table.concat(a._order, ","),
-    "guid,name,realm,level,class,race,sex,faction,inRoster,rank,note,online,lastOnline,hasAddon,updatedAt,addonVersion,discord,main,itemLevel,professions,talents,equipment",
+    "guid,name,realm,level,class,race,sex,faction,inRoster,rank,note,online,lastOnline,hasAddon,updatedAt,addonVersion,discord,main,pending,itemLevel,professions,talents,equipment",
     "member fields, in the documented order")
 H.eq(a.guid, alice.guid, "GUID")
 H.eq(a.realm, "TestRealm", "realm")

@@ -23,10 +23,12 @@ Lib.Attach(ns, {
     prefix = "BottarSync",
     trialPrefix = "BottarSyncTest",
     trial = false,
-    -- 2: records carry their account's profile (0.5). Still read: 1, the
-    -- changes of members on 0.4 and before, whose relays would drop it.
-    protocol = "2",
-    legacy = { ["1"] = true },
+    -- 3: a player's list names characters they added that are not theirs
+    -- yet (0.7), which 0.5 and 0.6 would take for their own account's, and
+    -- join it to that player without asking. Still read: 2, the changes of
+    -- members on 0.5 and 0.6, and 1, those of members on 0.4 and before.
+    protocol = "3",
+    legacy = { ["1"] = true, ["2"] = true },
     savedVariable = "BottarSyncDB",
 })
 

@@ -144,24 +144,31 @@ local function Rec(ak, dc, pt, ch)
     return { ak = ak, dc = dc, pt = pt, ch = ch }
 end
 -- Account A: A1 made the profile (A1 main), A2 later changed it (A2 main
--- too, the name renamed); A3 never logged in since the profile began.
--- Account B, the same player on another WoW account; C another player; D
--- someone without a profile.
+-- too, the name renamed, and A3 added, an alt); A3 never logged in since
+-- the profile began. Account B, the same player on another WoW account; C
+-- another player, who added A1 (theirs already) and E1 (no one's yet; so
+-- did the player, earlier); D someone without a profile; F1 a character
+-- without a record that C added.
+local E1, F1 = "Player-1-000000E1", "Player-1-000000F1"
 local who = Profile.Resolve({
     [A1] = Rec("KeyAAAAAAAAA", "first", 100, { [A1] = true }),
-    [A2] = Rec("KeyAAAAAAAAA", "player", 200, { [A1] = true, [A2] = true, [A3] = false }),
+    [A2] = Rec("KeyAAAAAAAAA", "player", 200, { [A1] = true, [A2] = true, [A3] = false, [E1] = true }),
     [A3] = {},
     [B1] = Rec("KeyBBBBBBBBB", "player", 150, { [B1] = true }),
-    [C1] = Rec("KeyCCCCCCCCC", "other", 300, { [C1] = false, [A1] = false }),
+    [C1] = Rec("KeyCCCCCCCCC", "other", 300, { [C1] = false, [A1] = false, [E1] = false, [F1] = true }),
     [D1] = {},
+    [E1] = {},
 })
 H.check(who[A1].dc == "player" and who[A2].dc == "player", "an account's characters take its newest profile's Discord name")
-H.eq(who[A3], nil, "a character that never carried a profile has no Discord name")
 H.check(who[A1].main and who[A2].main, "mains, from the newest profile of the player that speaks of them")
 H.check(who[B1].dc == "player" and who[B1].main, "another account of the same player keeps what it says of its own")
-H.check(who[C1].dc == "other" and not who[C1].main, "another player's alt")
-H.check(who[A1].main, "and another player's profile cannot make someone else's main an alt")
-H.eq(who[D1], nil, "no profile, no Discord name")
+H.check(who[C1].dc == "other" and not who[C1].main and not who[C1].pending, "another player's alt")
+H.check(who[A1].main and not who[A1].pending, "and another player's list cannot make someone else's main theirs, nor an alt")
+H.check(who[A3] and who[A3].dc == "player" and who[A3].main == false and who[A3].pending,
+    "a character with no profile that a player added counts as theirs, pending")
+H.check(who[E1] and who[E1].dc == "other" and who[E1].main == false and who[E1].pending, "added by two players: the newest list wins")
+H.check(who[F1] and who[F1].dc == "other" and who[F1].main and who[F1].pending, "also one without a record")
+H.eq(who[D1], nil, "no profile and added by no one: no Discord name")
 who = Profile.Resolve({
     [A1] = Rec("KeyAAAAAAAAA", "player", 100, { [A1] = true }),
     [B1] = Rec("KeyBBBBBBBBB", "player", 150, { [B1] = true, [A1] = false }),

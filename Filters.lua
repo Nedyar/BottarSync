@@ -4,7 +4,8 @@
 -- Each member of the guild roster is one of three kinds:
 --   - a bank character: its rank is one of Guild Bank Alts' bank ranks (the
 --     guild master's choice there), or "Banco" without that addon;
---   - an alt: its player did not tick it as a main (Profile.lua);
+--   - an alt: its player did not tick it as a main (Profile.lua), also while
+--     it is pending (added by a player, not accepted yet);
 --   - a main: the others, members without Bot'tar Sync or without a Discord
 --     username too.
 -- Its class and level come from the guild roster, its specializations from
@@ -101,9 +102,11 @@ local function Build()
             specs = {}, -- [tab] = { [spec group] = true }
         }
         local player = who[guid]
-        -- Who plays it, for its tooltip in the roster.
+        -- Who plays it, for its tooltip in the roster (pending: a player
+        -- added it, and it has not accepted yet; it counts as theirs).
         entry.dc = player and player.dc or nil
         entry.main = player and player.main or false
+        entry.pending = player and player.pending or false
         if IsBank(guid, rosterEntry) then
             entry.kind = "bank"
         elseif player and not player.main then

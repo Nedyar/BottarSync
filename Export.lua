@@ -275,7 +275,7 @@ end
 -- record: what their Bot'tar Sync shared (nil without it); crafts and
 -- builds: their records of Guild Professions & Recipes and of Guild Builds
 -- (nil without them); who: who plays the character ({ dc = Discord name,
--- main }, from Profile.Resolve; nil when their account has no profile).
+-- main, pending }, from Profile.Resolve; nil when no profile names it).
 local function MemberJSON(guid, entry, record, crafts, builds, who, now)
     local level = record and record.l ~= 0 and record.l or nil
     if entry and entry.l and (not level or entry.l > level) then
@@ -306,6 +306,7 @@ local function MemberJSON(guid, entry, record, crafts, builds, who, now)
         "addonVersion", record and record.av > 0 and ns.VersionString(record.av) or nil,
         "discord", who and who.dc or nil,
         "main", who and who.main,
+        "pending", who and who.pending == true,
         "itemLevel", builds and type(builds.il) == "number" and builds.il / 100 or nil,
         "professions", crafts and ProfessionsJSON(crafts.p) or nil,
         "talents", builds and TalentsOf(builds) or nil,

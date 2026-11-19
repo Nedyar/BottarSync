@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.0 - Add your characters
+
+- **Add a character to your list**: My data has a search box at the bottom: type part of a name and the guild's characters that are nobody's yet and have it show above the box. Click one, or choose it with the arrow keys and press Enter. The added character counts at once as your main or alt, in the Statistics window, the roster's boxes and the file for the bot, and shows as pending until it accepts.
+- **The character accepts**: when it logs in without a Discord username, it is asked whether it is yours. Accepting makes only that character yours, not the rest of its WoW account. Rejecting asks for its own username. A character that already has another player's username stays theirs: your list shows it as another player's, it does not count, and you can take it out.
+- **Manage your characters from any of them**: My data lists every character of yours, also those that accepted from another WoW account, and any of them changes the username, the mains and the alts.
+- On a computer without your saved data, a character is asked whether it is yours too, instead of taking it on its own.
+- A member's tooltip in the roster marks the pending characters, and the file for the bot gives each member a `pending` (true while their player's character has not accepted).
+- **The Statistics window can be moved**: drag it anywhere, as tall as it was. It opens beside the guild window again.
+- Members on 0.6 and before cannot read this version's data, and are told to update. This version still reads their changes.
+
 ## 0.6.0 - The roster in numbers
 
 - **Filters on the guild roster**: three new boxes on the guild's Roster tab, right of Offline members: Mains and Alts, ticked, and Banks, not ticked, so bank characters stay out of the list until you tick it. Members without Bot'tar Sync, or without a Discord username, count as mains. Bank characters are those with a bank rank of Guild Bank Alts ("Banco" until the guild master chooses others).

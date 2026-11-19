@@ -102,6 +102,7 @@ local function Globals(client)
         },
         ACCEPT = "Accept",
         SAVE = "Save",
+        DECLINE = "Decline",
         CreateDataProvider = Provider,
         -- The roster's "Offline members" box, as the game keeps it.
         GetCVarBool = function(name)
@@ -286,7 +287,17 @@ Click(button)
 local Stats = ns.Stats
 local window = Stats.Window()
 H.check(window ~= nil and window:IsShown(), "the button opens the window")
-H.check(window._point ~= nil, "beside the guild window, as tall as it")
+H.check(window._point ~= nil and window._point[2] == env.CommunitiesFrame, "beside the guild window, as tall as it")
+-- Dragged elsewhere: it leaves the guild window's side where it was, as tall.
+window._left, window._top, window._height = 900, 700, 480
+window._scripts.OnDragStart(window)
+H.check(window._point[1] == "TOPLEFT" and window._point[2] == env.UIParent and window._point[4] == 900 and window._point[5] == 700,
+    "it can be dragged away from the guild window")
+window._scripts.OnDragStart(window)
+H.eq(window._point[4], 900, "dragged again, it just moves")
+Click(button)
+Click(button)
+H.check(window:IsShown() and window._point[2] == env.CommunitiesFrame, "opened again, it is beside the guild window")
 local cards = window.kindCards
 H.check(cards.main.Number._text == "3" and cards.alt.Number._text == "1" and cards.bank.Number._text == "1" and cards.all.Number._text == "5",
     "a card for each kind, with its number")

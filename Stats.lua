@@ -1,6 +1,7 @@
 -- Stats.lua: the Statistics window, beside the game's guild window and as
 -- tall as it (scrolling when its content does not fit), opened by the
--- Statistics button of the Roster tab (RosterView.lua). It counts the
+-- Statistics button of the Roster tab (RosterView.lua). It can be dragged
+-- elsewhere, and opens beside the guild window again. It counts the
 -- guild's members (Filters.lua), and a click on a number filters the
 -- roster:
 --   - Characters: a card each for Mains, Alts, Banks and All; a click shows
@@ -265,6 +266,24 @@ local function Create()
     window:SetFrameStrata("HIGH")
     window:SetToplevel(true)
     window:EnableMouse(true)
+    -- Dragged away, it keeps its height and leaves the guild window's side
+    -- until it opens again.
+    window:SetMovable(true)
+    window:SetClampedToScreen(true)
+    window:RegisterForDrag("LeftButton")
+    window:SetScript("OnDragStart", function(self)
+        if self.docked then
+            self.docked = false
+            local left, top, height = self:GetLeft(), self:GetTop(), self:GetHeight()
+            if left and top then
+                self:ClearAllPoints()
+                self:SetHeight(height)
+                self:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left, top)
+            end
+        end
+        self:StartMoving()
+    end)
+    window:SetScript("OnDragStop", window.StopMovingOrSizing)
     window:Hide()
     tinsert(UISpecialFrames, window:GetName())
     window:SetTitle(L["Guild statistics"])
@@ -485,6 +504,7 @@ function Stats.Toggle()
         Create()
     end
     window:ClearAllPoints()
+    window.docked = true
     if CommunitiesFrame and CommunitiesFrame:IsShown() then
         window:SetPoint("TOPLEFT", CommunitiesFrame, "TOPRIGHT", 10, 0)
         window:SetPoint("BOTTOMLEFT", CommunitiesFrame, "BOTTOMRIGHT", 10, 0)

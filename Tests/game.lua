@@ -19,6 +19,13 @@ return function(H)
     -- A check box's label, and widget looks the tests do not check.
     H.TemplateRegions.UICheckButtonTemplate = H.TemplateRegions.UICheckButtonTemplate or { Text = "FontString" }
     H.NoOpMethods.SetHighlightAtlas = true
+    -- Where a frame's top is on the screen, when a test says so (as
+    -- Guild Builds' GetLeft).
+    H.FrameMethods.GetTop = H.FrameMethods.GetTop or function(self)
+        return self._top
+    end
+    -- The game's search box: its instructions.
+    H.TemplateRegions.SearchBoxTemplate = H.TemplateRegions.SearchBoxTemplate or { Instructions = "FontString" }
     -- A text's height: 12 pixels a line, its lines as wide as the text is
     -- set to be (6 pixels a character, as GetStringWidth).
     H.FrameMethods.GetStringHeight = function(self)

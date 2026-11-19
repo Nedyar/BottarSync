@@ -168,8 +168,9 @@ space ("First Last") and no realm.
 | `hasAddon` | boolean | Whether the character runs Bot'tar Sync. When `false`, `realm`, `race`, `sex`, `faction`, `updatedAt` and `addonVersion` are `null`. |
 | `updatedAt` | number or `null` | Last change to their Bot'tar Sync data (Unix). |
 | `addonVersion` | text or `null` | The version of Bot'tar Sync they use. |
-| `discord` | text or `null` | The Discord username of the character's player, as they typed it in game, in small letters as Discord keeps usernames (2 to 32 letters, digits, `_` or `.`). Nothing checks it against Discord. It belongs to the WoW account, so every character of the account has it, and characters on two accounts with the same name are the same player. `null` until the account gives one (Bot'tar Sync 0.5 or later asks for it), and for members without the addon. |
+| `discord` | text or `null` | The Discord username of the character's player, as they typed it in game, in small letters as Discord keeps usernames (2 to 32 letters, digits, `_` or `.`). Nothing checks it against Discord. By default it belongs to the WoW account, so every character of the account has it; a character that accepted to be another player's has theirs (Bot'tar Sync 0.7 or later). Characters with the same name are the same player. `null` until the character's player gives one (Bot'tar Sync 0.5 or later asks for it), and for members without the addon, unless a player added the character to their list (see `pending`). |
 | `main` | boolean or `null` | `true` for one of the player's mains (a player may have several), `false` for an alt. `null` when `discord` is. |
+| `pending` | boolean or `null` | `true` when a player added the character to their list from their own character (Bot'tar Sync 0.7 or later) and it has not accepted yet: it never gave a username, or it has no Bot'tar Sync. It counts as that player's meanwhile. `false` for a character that is its player's, `null` when `discord` is. |
 | `itemLevel` | number or `null` | Average item level of the equipped items, with decimals. From Guild Builds, while they share their gear. |
 | `professions` | list or `null` | See below. From Guild Professions & Recipes. |
 | `talents` | object or `null` | See below. From Guild Builds; `null` until they could be read, e.g. for characters that have no talents yet. |
@@ -271,6 +272,7 @@ Alice's second spec is cut short.
           "addonVersion": "0.1.0",
           "discord": "alice.smith",
           "main": true,
+          "pending": false,
           "itemLevel": 74.5,
           "professions": [
             {
@@ -338,6 +340,7 @@ Alice's second spec is cut short.
           "addonVersion": null,
           "discord": null,
           "main": null,
+          "pending": null,
           "itemLevel": null,
           "professions": null,
           "talents": null,
