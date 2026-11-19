@@ -13,7 +13,9 @@
 -- of this client.
 --
 -- Each member's data comes from the addon that shares it (Sources.lua): the
--- character and the roster from Bot'tar Sync, professions and recipes from
+-- character, who plays it (their Discord name, and whether it is one of
+-- their mains: Profile.lua) and the roster from Bot'tar Sync, professions
+-- and recipes from
 -- Guild Professions & Recipes, talents, items worn and item level from Guild
 -- Builds.
 local _, ns = ...
@@ -272,8 +274,9 @@ end
 -- entry: the member's roster entry (nil when not in the roster read);
 -- record: what their Bot'tar Sync shared (nil without it); crafts and
 -- builds: their records of Guild Professions & Recipes and of Guild Builds
--- (nil without them).
-local function MemberJSON(guid, entry, record, crafts, builds, now)
+-- (nil without them); who: who plays the character ({ dc = Discord name,
+-- main }, from Profile.Resolve; nil when their account has no profile).
+local function MemberJSON(guid, entry, record, crafts, builds, who, now)
     local level = record and record.l ~= 0 and record.l or nil
     if entry and entry.l and (not level or entry.l > level) then
         level = entry.l
@@ -301,6 +304,8 @@ local function MemberJSON(guid, entry, record, crafts, builds, now)
         "hasAddon", record ~= nil,
         "updatedAt", record and record.t or nil,
         "addonVersion", record and record.av > 0 and ns.VersionString(record.av) or nil,
+        "discord", who and who.dc or nil,
+        "main", who and who.main,
         "itemLevel", builds and type(builds.il) == "number" and builds.il / 100 or nil,
         "professions", crafts and ProfessionsJSON(crafts.p) or nil,
         "talents", builds and TalentsOf(builds) or nil,
@@ -310,7 +315,8 @@ end
 -- The whole file ---------------------------------------------------------------------
 
 -- What each source knows of a guild's members: { records, crafts, builds },
--- each { [GUID] = record }.
+-- each { [GUID] = record }, and who plays each character (who, see
+-- Profile.Resolve).
 local function Known(guildKey, guild)
     local records = {}
     for guid, record in pairs(guild and guild.members or {}) do
@@ -320,6 +326,7 @@ local function Known(guildKey, guild)
     end
     return {
         records = records,
+        who = ns.Profile.Resolve(records),
         crafts = Sources.Records(Sources.PROFESSIONS, guildKey),
         builds = Sources.Records(Sources.BUILDS, guildKey),
     }
@@ -332,7 +339,7 @@ local function SortedMembers(guildKey, guild)
     local function Add(guid, entry)
         list[#list + 1] = {
             guid = guid, entry = entry, record = known.records[guid],
-            crafts = known.crafts[guid], builds = known.builds[guid],
+            crafts = known.crafts[guid], builds = known.builds[guid], who = known.who[guid],
         }
     end
     if roster then
@@ -369,7 +376,7 @@ end
 local function GuildJSON(guildKey, guild, now)
     local members, withAddon = {}, 0
     for _, item in ipairs(SortedMembers(guildKey, guild)) do
-        members[#members + 1] = MemberJSON(item.guid, item.entry, item.record, item.crafts, item.builds, now)
+        members[#members + 1] = MemberJSON(item.guid, item.entry, item.record, item.crafts, item.builds, item.who, now)
         if item.record then
             withAddon = withAddon + 1
         end
@@ -503,7 +510,7 @@ function Export.Show(name)
     local known = Known(guildKey, guild)
     local record = known.records[guid]
     local entry = (roster and roster[guid]) or ns.Roster.members[guid]
-    local text = Json.Encode(MemberJSON(guid, entry, record, known.crafts[guid], known.builds[guid], ns.Now()), true)
+    local text = Json.Encode(MemberJSON(guid, entry, record, known.crafts[guid], known.builds[guid], known.who[guid], ns.Now()), true)
     ShowText(ns.TITLE .. " - " .. ((entry and entry.n) or (record and record.n) or guid), text)
 end
 

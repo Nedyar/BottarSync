@@ -10,10 +10,15 @@
 --           entry (see LibGuildSync's Roster.lua) } } } },
 --   settings = { locale, export },
 --   own = { [GUID] = { sentFP, sentGuild } },
+--   account = the WoW account's profile: { key, dc = Discord name, pt =
+--       time of its last change, ch = { [GUID] = true for a main, false for
+--       an alt } }, or { ch = {} } until the player gives a Discord name
+--       (see Profile.lua),
 -- }
 --
 -- Since 0.4.0 a record holds the character alone: name, realm, level, class,
--- race, sex and faction. Professions, items worn and talents are shared by
+-- race, sex and faction, and since 0.5.0 its WoW account's profile (the
+-- player's Discord name, their mains and alts: Profile.lua). Professions, items worn and talents are shared by
 -- the addons that own them (see Sources.lua). Records from earlier versions
 -- still carry them; they are dropped when read.
 local _, ns = ...
@@ -42,6 +47,13 @@ function Data.CleanRecord(record, now)
     clean.sx = IsCount(record.sx, 3) and record.sx or 0
     clean.f = IsCount(record.f, 3) and record.f or 0
     clean.l = IsCount(record.l, 1000) and record.l or 0
+    -- The account's profile (Profile.lua), whole or not at all; one dated
+    -- in the future would win over every later change.
+    local key, discord = ns.Profile.CleanKey(record.ak), ns.Profile.CleanDiscord(record.dc)
+    local ch = ns.Profile.CleanCharacters(record.ch, ns.Pack.LIMITS.profile)
+    if key and discord and ch and Lib.IsTime(record.pt) and not (now and record.pt > now + 300) then
+        clean.ak, clean.dc, clean.pt, clean.ch = key, discord, record.pt, ch
+    end
     return clean
 end
 
@@ -83,6 +95,15 @@ function Data.SanitizeExtra(clean, db)
     end
     for _, state in pairs(clean.own) do
         state.hinted = nil
+    end
+    -- The WoW account's profile (Profile.lua), whole or empty.
+    local account = type(db.account) == "table" and db.account or {}
+    local key, discord = ns.Profile.CleanKey(account.key), ns.Profile.CleanDiscord(account.dc)
+    local ch = ns.Profile.CleanCharacters(account.ch, ns.Pack.LIMITS.profile)
+    if key and discord and ch and Lib.IsTime(account.pt) then
+        clean.account = { key = key, dc = discord, pt = account.pt, ch = ch }
+    else
+        clean.account = { ch = {} }
     end
 end
 

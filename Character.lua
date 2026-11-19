@@ -1,6 +1,7 @@
 -- Character.lua: reads the player's own character: level, class, race, sex
--- and faction. What it wears and its talents are Guild Builds' to share,
--- its professions Guild Professions & Recipes' (see Sources.lua).
+-- and faction, and puts its WoW account's profile with it (Profile.lua).
+-- What it wears and its talents are Guild Builds' to share, its professions
+-- Guild Professions & Recipes' (see Sources.lua).
 local _, ns = ...
 
 local Character = {}
@@ -39,6 +40,10 @@ function Character.Update()
             record[key] = value
             changed = true
         end
+    end
+    -- Our WoW account's profile: the Discord name, mains and alts.
+    if ns.Profile.ApplyOwn(record) then
+        changed = true
     end
     Character.ready = true
     if changed then

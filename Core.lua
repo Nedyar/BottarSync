@@ -1,4 +1,5 @@
--- Bot'tar Sync: shares every guild member's characters with the guild and
+-- Bot'tar Sync: shares every guild member's characters with the guild, and
+-- who plays them (their Discord name, mains and alts: Profile.lua), and
 -- writes them, as JSON, into the saved variables file for the Bot'tar bot,
 -- together with what the guild's other addons share (Sources.lua).
 --
@@ -11,13 +12,24 @@ local Lib = LibGuildSync
 
 ns.ADDON_NAME = ADDON_NAME
 
+-- While a version with a new protocol is tried in game before its release,
+-- set trial = true: it then talks on trialPrefix (see LibGuildSync's
+-- Core.lua). Turn it off for the release.
 Lib.Attach(ns, {
     title = "Bot'tar Sync",
     tag = "BS",
     prefix = "BottarSync",
-    protocol = "1",
+    trialPrefix = "BottarSyncTest",
+    trial = false,
+    -- 2: records carry their account's profile (0.5). Still read: 1, the
+    -- changes of members on 0.4 and before, whose relays would drop it.
+    protocol = "2",
+    legacy = { ["1"] = true },
     savedVariable = "BottarSyncDB",
 })
+
+-- A change to the Discord name, mains or alts goes out within seconds.
+ns.Sync.QUICK_KINDS.profile = true
 
 -- While a version that keeps the protocol is tried in game before its
 -- release, it tells the guild it runs the last release (ANNOUNCE_AS): it
@@ -69,7 +81,7 @@ events:SetScript("OnEvent", function(self, event, name)
         Lib.Start(ns)
         -- Each part starts on its own, so a failure in one (reported as a normal
         -- Lua error) does not stop the others.
-        for _, init in ipairs({ ns.Character.Init, ns.Export.Init, ns.KinFolk.Init }) do
+        for _, init in ipairs({ ns.Character.Init, ns.Profile.Init, ns.Export.Init, ns.KinFolk.Init, ns.MyData.Init }) do
             xpcall(init, geterrorhandler())
         end
     end

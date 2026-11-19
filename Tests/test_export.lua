@@ -88,7 +88,7 @@ H.eq(table.concat(names, ","), "Alice Smith,Carol White,Dan Brown,Erin Gray", "m
 H.section("Export: a member with the addon")
 local a = Find(guild.members, "name", "Alice Smith")
 H.eq(table.concat(a._order, ","),
-    "guid,name,realm,level,class,race,sex,faction,inRoster,rank,note,online,lastOnline,hasAddon,updatedAt,addonVersion,itemLevel,professions,talents,equipment",
+    "guid,name,realm,level,class,race,sex,faction,inRoster,rank,note,online,lastOnline,hasAddon,updatedAt,addonVersion,discord,main,itemLevel,professions,talents,equipment",
     "member fields, in the documented order")
 H.eq(a.guid, alice.guid, "GUID")
 H.eq(a.realm, "TestRealm", "realm")
@@ -111,7 +111,8 @@ H.eq(type(a.updatedAt), "number", "update time")
 -- The version each member tells the guild (ANNOUNCE_AS while a version is
 -- tried before its release), not the TOC's.
 H.eq(a.addonVersion, alice.ns.VersionString(alice.ns.VERSION_NUM), "their addon version, as they announce it")
-H.eq(a.itemLevel, 52.38, "item level")
+-- As Guild Builds works it out from the items worn: helm and bow over 17.
+H.eq(a.itemLevel, 8.06, "item level")
 
 local leather = Find(a.professions, "id", 165)
 H.check(leather ~= nil, "Leatherworking listed")
@@ -218,7 +219,8 @@ world:Logout(carol)
 local f = Find(H.DecodeJSON(carol.saved.BottarSyncJSON).guilds[1].members, "name", "Frank Green")
 H.eq(f.hasAddon, false, "without Bot'tar Sync")
 H.check(f.professions ~= NULL and Find(f.professions, "id", 164) ~= nil, "their professions, from Guild Professions & Recipes")
-H.check(f.equipment ~= NULL and Find(f.equipment, "slot", 5) ~= nil and f.itemLevel == 20, "their items and item level, from Guild Builds")
+H.check(f.equipment ~= NULL and Find(f.equipment, "slot", 5) ~= nil and f.itemLevel == 1.18,
+    "their items and item level, from Guild Builds (the chest over 17)")
 H.check(f.talents ~= NULL and f.talents.specs[1].shared == false, "their builds, not shared")
 H.check(f.race == NULL and f.sex == NULL, "but not what only Bot'tar Sync shares")
 world:Logout(frank)

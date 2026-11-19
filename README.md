@@ -9,6 +9,16 @@ guild's other addons share.
 
 - **Every character.** Each client reads its own character: name, realm,
   level, class, race, sex and faction.
+- **Who plays each character.** A guild member whose account has no Discord
+  username yet is asked for it, in a box with an Accept button, a little
+  after logging in or joining the guild: the account's unique username, not
+  the display name nor a server nickname. The guild window's **My data** button (at
+  the bottom right of its Chat and Roster tabs, right of Invite Member and
+  Guild Settings) opens a window to change it and to tick which characters
+  are mains; the others are alts, and a player may have several mains. The
+  name and the mains belong to the WoW account: every character of the
+  account carries them, and characters on another account that go by the
+  same Discord name count as the same player.
 - **What the other addons share goes into the file too.** Each guild addon
   shares its own part, and Bot'tar Sync reads it from them when it writes
   the file: professions and recipes from Guild Professions & Recipes;
@@ -75,8 +85,9 @@ guild's other addons share.
 
 ## What is shared
 
-The character goes to every guild member who runs the addon; what the other
-addons share follows their own settings. The roster data (rank, public note,
+The character, and your Discord name with your mains and alts, go to every
+guild member who runs the addon; what the other addons share follows their
+own settings. The roster data (rank, public note,
 last time online) is read by each client from the game, as the guild window
 shows it; officer notes are never exported.
 
@@ -96,7 +107,9 @@ into simulated clients that talk through a simulated server, and check the
 sync, the saved data, the JSON (with the builds read from the game's import
 strings, which the tests make in the game's format) and, when Node.js is
 installed, the bot's reader on files written the way the game writes them. Another checks the KinFolk buttons and key
-against a stand-in for KinFolk's public pieces. One test puts members on the last release
+against a stand-in for KinFolk's public pieces, and another the Discord name box, the My data
+window and its button, and how a profile travels between the characters of an account and the
+guild. One test puts members on the last release
 (taken from its git tag) in the same guild as members on this version.
 
 ## Releasing
@@ -107,8 +120,11 @@ CurseForge packages every tagged commit pushed here.
 1. Raise `## Version` in `BottarSync.toc` and add that version's entry at
    the top of `CHANGELOG.md`. The tests check that both match. If
    `ANNOUNCE_AS` is set in `Core.lua` (a version tried in game while telling
-   the guild it is the last release), set it to nil. The tests print a note
-   while it is on.
+   the guild it is the last release), set it to nil. While a version with a
+   new protocol is tried in game, `trial = true` in the configuration in
+   `Core.lua` keeps it on an addon-message prefix of its own, so members on
+   the released version are not asked to update yet; set it to `false` for
+   the release. The tests print a note while either is on.
 2. Commit, tag the commit `v<version>` and push the tag:
    `git push origin v<version>`. A tag containing `beta` or `alpha` makes a
    beta or alpha file instead of a release.

@@ -42,6 +42,27 @@ H.check(back.p ~= nil and next(back.p) == nil and back.g == nil and back.tl == n
     "no professions, items, talents or item level any more (written empty, for older versions)")
 back.p = nil
 H.check(ns.Same(back, record), "record round trip, every field")
+H.check(back.ak == nil and back.dc == nil and back.pt == nil and back.ch == nil, "no profile while the account has none")
+-- With the account's profile (0.5).
+local profiled = H.DeepCopy(record)
+profiled.ak, profiled.dc, profiled.pt = "AbCdEf123456", "solo.name", now - 5
+profiled.ch = { [GUID] = true, ["Player-1-0000000B"] = false }
+key, back = Pack.ReadRecord(Pack.Reader(Pack.RecordString(GUID, profiled)))
+back.p = nil
+H.check(ns.Same(back, profiled), "record round trip with the profile: key, Discord name, time, mains and alts")
+-- A record of 0.4 or before ends after the talents.
+local body0 = Pack.RecordString(GUID, record)
+local reader0 = Pack.Reader(body0)
+local length0 = reader0:UInt()
+local short = Pack.Writer()
+short:Str(body0:sub(reader0.pos, reader0.pos + length0 - 1 - 4))
+key, back = Pack.ReadRecord(Pack.Reader(short:Result()))
+H.check(key == GUID and back.l == 60 and back.ak == nil and back.ch == nil, "a record from before 0.5 reads, without a profile")
+local crowd = H.DeepCopy(profiled)
+for i = 1, 61 do
+    crowd.ch[("Player-1-%08X"):format(1000 + i)] = false
+end
+H.check(not pcall(Pack.ReadRecord, Pack.Reader(Pack.RecordString(GUID, crowd))), "a profile with too many characters is refused")
 -- A record from a version before 0.4, with what other addons share now.
 local legacy = {
     n = "Old Name", t = now, av = 301, c = 3, r = 4, sx = 3, f = 1, l = 60, il = 5238,
@@ -83,6 +104,69 @@ clean = Data.CleanRecord(copy, now)
 H.check(clean.c == 0 and clean.l == 0, "odd numbers become unknown")
 H.check(H.SameList({ Data.Stats(clean) }, { 0, 0, 0 }) and Data.STATS == 3,
     "three stats, as versions before 0.4 send, all 0")
+clean = Data.CleanRecord(profiled, now)
+H.check(clean.ak == "AbCdEf123456" and clean.dc == "solo.name" and clean.pt == now - 5 and clean.ch[GUID] == true,
+    "a record's profile passes")
+local function ProfileOf(change)
+    local bad = H.DeepCopy(profiled)
+    change(bad)
+    local result = Data.CleanRecord(bad, now)
+    return result.ak or result.dc or result.pt or result.ch
+end
+H.eq(ProfileOf(function(bad) bad.dc = "Not A Name" end), nil, "a profile with a Discord name Discord could not have is dropped whole")
+H.eq(ProfileOf(function(bad) bad.ak = "short" end), nil, "and one with an odd account key")
+H.eq(ProfileOf(function(bad) bad.pt = now + 3600 end), nil, "and one dated in the future")
+H.eq(ProfileOf(function(bad) bad.ch = "x" end), nil, "and one without its characters")
+clean = Data.CleanRecord((function()
+    local odd = H.DeepCopy(profiled)
+    odd.ch["not a GUID"] = true
+    odd.ch["Player-1-0000000C"] = "yes"
+    return odd
+end)(), now)
+H.check(clean.ch["not a GUID"] == nil and clean.ch["Player-1-0000000C"] == nil and clean.ch[GUID] == true,
+    "characters that are not GUIDs with true or false are left out")
+
+H.section("Profile: Discord names")
+local Profile = ns.Profile
+for _, case in ipairs({
+    { "solo.name", "solo.name" }, { "  Solo_Name99 ", "solo_name99" }, { "@nedyar", "nedyar" },
+    { "a", nil }, { ("x"):rep(33), nil }, { ("x"):rep(32), ("x"):rep(32) }, { "two words", nil },
+    { "dots..twice", nil }, { "ñandú", nil }, { "name#1234", nil }, { "", nil }, { 42, nil },
+}) do
+    H.eq(Profile.CleanDiscord(case[1]), case[2], "Discord name " .. tostring(case[1]))
+end
+H.check(Profile.CleanKey(Profile.NewKey()) ~= nil and Profile.NewKey() ~= Profile.NewKey(), "new account keys are good and differ")
+
+H.section("Profile: who plays each character")
+local A1, A2, A3 = "Player-1-000000A1", "Player-1-000000A2", "Player-1-000000A3"
+local B1, C1, D1 = "Player-1-000000B1", "Player-1-000000C1", "Player-1-000000D1"
+local function Rec(ak, dc, pt, ch)
+    return { ak = ak, dc = dc, pt = pt, ch = ch }
+end
+-- Account A: A1 made the profile (A1 main), A2 later changed it (A2 main
+-- too, the name renamed); A3 never logged in since the profile began.
+-- Account B, the same player on another WoW account; C another player; D
+-- someone without a profile.
+local who = Profile.Resolve({
+    [A1] = Rec("KeyAAAAAAAAA", "first", 100, { [A1] = true }),
+    [A2] = Rec("KeyAAAAAAAAA", "player", 200, { [A1] = true, [A2] = true, [A3] = false }),
+    [A3] = {},
+    [B1] = Rec("KeyBBBBBBBBB", "player", 150, { [B1] = true }),
+    [C1] = Rec("KeyCCCCCCCCC", "other", 300, { [C1] = false, [A1] = false }),
+    [D1] = {},
+})
+H.check(who[A1].dc == "player" and who[A2].dc == "player", "an account's characters take its newest profile's Discord name")
+H.eq(who[A3], nil, "a character that never carried a profile has no Discord name")
+H.check(who[A1].main and who[A2].main, "mains, from the newest profile of the player that speaks of them")
+H.check(who[B1].dc == "player" and who[B1].main, "another account of the same player keeps what it says of its own")
+H.check(who[C1].dc == "other" and not who[C1].main, "another player's alt")
+H.check(who[A1].main, "and another player's profile cannot make someone else's main an alt")
+H.eq(who[D1], nil, "no profile, no Discord name")
+who = Profile.Resolve({
+    [A1] = Rec("KeyAAAAAAAAA", "player", 100, { [A1] = true }),
+    [B1] = Rec("KeyBBBBBBBBB", "player", 150, { [B1] = true, [A1] = false }),
+})
+H.check(not who[A1].main and who[B1].main, "the player's newest profile wins, from any of their accounts")
 
 H.section("Data: saved form")
 local db = ns.db
@@ -111,6 +195,14 @@ loaded = Data.Sanitize(garbage)
 H.check(loaded.guilds["Test Guild"].members[GUID] == nil, "an unreadable saved record is dropped")
 H.check(loaded.guilds["Test Guild"].members["Player-1-0000000F"] == nil, "a record saved under another GUID is dropped")
 H.check(next(Data.Sanitize("nonsense").guilds) == nil, "a broken database starts empty")
+H.check(next(Data.Sanitize("nonsense").account.ch) == nil, "with an empty profile")
+local withAccount = H.DeepCopy(packed)
+withAccount.account = { key = "AbCdEf123456", dc = "solo.name", pt = now, ch = { [GUID] = true, bad = 1 } }
+loaded = Data.Sanitize(withAccount)
+H.check(loaded.account.key == "AbCdEf123456" and loaded.account.dc == "solo.name" and loaded.account.ch[GUID] == true
+    and loaded.account.ch.bad == nil, "the account's profile is saved and checked")
+withAccount.account.dc = "Not Valid"
+H.check(Data.Sanitize(withAccount).account.key == nil, "a broken profile is dropped")
 savedGuild.members[GUID] = nil
 
 H.section("Data: professions of Guild Professions & Recipes")
@@ -370,6 +462,9 @@ H.check(toc:find("## SavedVariables: BottarSyncDB, BottarSyncJSON", 1, true) ~= 
 local announced = Read("Core.lua"):match('\nlocal ANNOUNCE_AS = "([%d%.]+)"')
 if announced then
     print(("  NOTE: Core.lua tells the guild this is %s: set ANNOUNCE_AS to nil before tagging a release"):format(announced))
+end
+if Read("Core.lua"):find("\n    trial = true,", 1, true) then
+    print("  NOTE: Core.lua talks on the trial prefix: set trial = false before tagging a release")
 end
 H.check(toc:find("## Dependencies: LibGuildSync", 1, true) ~= nil, "LibGuildSync is a dependency")
 -- The game reads Bindings.xml by itself: not in the TOC, but in the package.

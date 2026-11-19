@@ -1,10 +1,13 @@
 local H = ...
 
--- Members on the last release and members on this version share one guild:
--- both must keep talking. The release is taken from its git tag
--- (H.Release). Both run the guild's other addons, as the CurseForge app
--- installs them.
-local RELEASE = "v0.3.1"
+-- Members on the last release and members on this version share one guild.
+-- This version talks a new protocol (2: records carry their account's
+-- profile), which the release cannot read: this version still hears the
+-- release's changes (protocol 1), the release gets nothing from it and is
+-- told to update, or, while this version is tried in game (trial), does not
+-- hear it at all. The release is taken from its git tag (H.Release). Both
+-- run the guild's other addons, as the CurseForge app installs them.
+local RELEASE = "v0.4.0"
 
 H.section("Versions: against " .. RELEASE)
 local old = H.Release(RELEASE)
@@ -47,6 +50,15 @@ local function Find(list, name)
     end
 end
 
+local function ToldToUpdate(client)
+    for _, line in ipairs(client.printed) do
+        if line:find("cannot talk to", 1, true) then
+            return true
+        end
+    end
+    return false
+end
+
 for _, case in ipairs({
     { "this version first, then " .. RELEASE, nil, OLD },
     { RELEASE .. " first, then this version", OLD, nil },
@@ -63,32 +75,39 @@ for _, case in ipairs({
     world:Login(second)
     world:RunFor(10)
     world:OpenProfession(second, 165, { 1001, 1002, 1003, 1004 }, { 1001, 1003 })
+    -- This version gives its Discord name.
+    current.ns.Profile.SetDiscord("first.player")
     world:RunFor(300)
-    local atCurrent, atRelease = RecordOf(current, release), RecordOf(release, current)
-    H.check(atCurrent ~= nil and atCurrent.c == 3 and atCurrent.l == 60, label .. ": this version has the release's character")
-    H.check(atCurrent ~= nil and atCurrent.p == nil and atCurrent.tl == nil and atCurrent.g == nil,
-        label .. ": without the professions, talents and items the release still shares")
-    H.check(atRelease ~= nil and atRelease.c == 3 and type(atRelease.p) == "table", label .. ": the release reads this version's records")
-    -- A change while both are online.
-    current.level = 61
-    world:FireEvent(current, "PLAYER_LEVEL_UP", 61)
+    -- A change of the release's while both are online.
+    release.level = 61
+    world:FireEvent(release, "PLAYER_LEVEL_UP", 61)
     world:RunFor(150)
-    H.eq(RecordOf(release, current).l, 61, label .. ": a new level reaches the release")
+    local atCurrent = RecordOf(current, release)
+    H.check(atCurrent ~= nil and atCurrent.c == 3 and atCurrent.l == 61, label .. ": this version hears the release's changes")
+    H.check(atCurrent ~= nil and atCurrent.p == nil and atCurrent.tl == nil and atCurrent.g == nil and atCurrent.dc == nil,
+        label .. ": without what the release no longer shares, nor a profile")
+    H.eq(RecordOf(release, current), nil, label .. ": the release gets nothing from this version")
+    if current.ns.TRIAL then
+        H.check(not ToldToUpdate(release), label .. ": while this version is tried, the release is not told to update")
+    else
+        H.check(ToldToUpdate(release), label .. ": the release is told to update")
+    end
     Errors(world, label)
-    -- Both write the same members into the bot's file; this version takes
-    -- professions and talents from the other addons.
+    -- This version's file has both members, the release's recipes and
+    -- builds from the other addons, which still share between versions.
     world:Logout(first)
     world:Logout(second)
-    for _, client in ipairs({ first, second }) do
-        local data = H.DecodeJSON(client.saved.BottarSyncJSON or "{}")
-        local members = data.guilds and data.guilds[1] and data.guilds[1].members
-        local a, b = Find(members, "First Member"), Find(members, "Second Member")
-        H.check(a and b and a.hasAddon == true and b.hasAddon == true, label .. ": " .. client.name .. "'s file has both members")
-    end
     local data = H.DecodeJSON(current.saved.BottarSyncJSON or "{}")
-    local member = Find(data.guilds[1].members, release.name)
-    H.check(member and type(member.professions) == "table" and #member.professions == 1 and #member.professions[1].recipes == 2,
-        label .. ": this version's file has the release member's recipes, from Guild Professions & Recipes")
-    H.check(member and type(member.talents) == "table" and type(member.equipment) == "table",
+    local members = data.guilds and data.guilds[1] and data.guilds[1].members
+    local mine, theirs = Find(members, current.name), Find(members, release.name)
+    H.check(mine and theirs and mine.hasAddon == true and theirs.hasAddon == true, label .. ": this version's file has both members")
+    H.check(mine and mine.discord == "first.player" and mine.main == true and theirs and theirs.discord == H.NULL,
+        label .. ": with this version's Discord name")
+    H.check(theirs and type(theirs.professions) == "table" and #theirs.professions == 1 and #theirs.professions[1].recipes == 2,
+        label .. ": and the release member's recipes, from Guild Professions & Recipes")
+    H.check(theirs and type(theirs.talents) == "table" and type(theirs.equipment) == "table",
         label .. ": and their builds and items, from Guild Builds")
+    data = H.DecodeJSON(release.saved.BottarSyncJSON or "{}")
+    members = data.guilds and data.guilds[1] and data.guilds[1].members
+    H.check(Find(members, current.name) ~= nil, label .. ": the release's file still lists this version's member, from the roster")
 end

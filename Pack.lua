@@ -17,6 +17,9 @@ Pack.LIMITS = {
     tabs = 6,
     talents = 150,   -- learned talents of one spec
     coordinate = 1000000,
+    discord = 32,    -- a Discord username
+    accountKey = 16,
+    profile = 60,    -- characters a profile tells mains from alts for
 }
 
 -- Records --------------------------------------------------------------------
@@ -42,6 +45,10 @@ Pack.LIMITS = {
 --       sp = points spent } }, t = learned talents { nd = node ID,
 --       sp = spell ID, r = rank, m = max rank, tb = tab, rw = row,
 --       cl = column, x, y = position in the tree } } }.
+-- Since 0.5 (protocol 2) a record also carries its WoW account's profile
+-- (see Profile.lua): ak = the account's key, dc = the player's Discord name,
+-- pt = time of the profile's last change, ch = { [GUID] = true for a main,
+-- false for an alt }. Records of 0.4 and before end without it.
 -- A packed record is prefixed by its length, so fields added later are
 -- skipped by older readers.
 local K_UNKNOWN, K_NONE, K_LIST = 0, 1, 2
@@ -200,6 +207,38 @@ local function ReadTalents(reader)
     return talents
 end
 
+local function WriteProfile(writer, record)
+    writer:Str(record.ak or "")
+    writer:Str(record.dc or "")
+    writer:UInt(record.pt or 0)
+    local guids = SortedKeys(record.ch or {})
+    writer:UInt(#guids)
+    for _, guid in ipairs(guids) do
+        writer:Str(guid)
+        writer:Byte(record.ch[guid] and 1 or 0)
+    end
+end
+
+local function ReadProfile(reader, record)
+    if reader:AtEnd() then
+        return
+    end
+    local key, discord, time = reader:Str(LIMITS.accountKey), reader:Str(LIMITS.discord), reader:UInt()
+    local count = reader:UInt()
+    if count > LIMITS.profile then
+        error("too many characters", 0)
+    end
+    local ch = {}
+    for _ = 1, count do
+        local guid = reader:Str()
+        ch[guid] = reader:Byte() == 1
+    end
+    -- Written empty while the account has no profile.
+    if key ~= "" then
+        record.ak, record.dc, record.pt, record.ch = key, discord ~= "" and discord or nil, time, ch
+    end
+end
+
 -- The record's own bytes, without the length prefix.
 local function RecordBody(guid, record)
     local writer = Pack.Writer()
@@ -218,6 +257,7 @@ local function RecordBody(guid, record)
     WriteProfessions(writer, record.p or {})
     WriteGear(writer, record.g)
     WriteTalents(writer, record.tl)
+    WriteProfile(writer, record)
     return writer:Result()
 end
 
@@ -246,6 +286,7 @@ function Pack.ReadRecord(reader)
     record.p = ReadProfessions(reader)
     record.g = ReadGear(reader)
     record.tl = ReadTalents(reader)
+    ReadProfile(reader, record)
     -- Anything after this was added by a later version.
     return guid, record
 end

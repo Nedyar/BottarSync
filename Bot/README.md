@@ -10,7 +10,7 @@ On the bot admin's computer (or on any computer with the addon and the export
 turned on, which it is by default):
 
 ```
-World of Warcraft\_classic_beta_\WTF\Account\<ACCOUNT>\SavedVariables\BottarSync.lua
+World of Warcraft\_forever_\WTF\Account\<ACCOUNT>\SavedVariables\BottarSync.lua
 ```
 
 `<ACCOUNT>` is the WoW account's folder, for example `12345678#1`. If the
@@ -89,7 +89,8 @@ also accept every other Lua 5.1 escape.
   hidden game messages; the CurseForge app installs them all with Bot'tar
   Sync:
   - **Bot'tar Sync**: the character (realm, level, class, race, sex,
-    faction).
+    faction), and who plays it: the Discord name each member types in game,
+    and which of their characters are mains and which alts.
   - **Guild Professions & Recipes**: professions and recipes.
   - **Guild Builds**: talents, the items worn and the item level. Each member
     chooses what it shares, for each spec group (the boxes at the bottom of
@@ -144,7 +145,8 @@ Members who leave the guild disappear from `members` at the next roster read.
 
 ### Member (`members[]`)
 
-Each character is a member of its own; alts are not grouped. Identify
+Each character is a member of its own. The characters of one player have
+the same `discord`, and `main` tells their mains from their alts. Identify
 characters by their **`guid`**, which never changes. WoW Forever names have a
 space ("First Last") and no realm.
 
@@ -166,6 +168,8 @@ space ("First Last") and no realm.
 | `hasAddon` | boolean | Whether the character runs Bot'tar Sync. When `false`, `realm`, `race`, `sex`, `faction`, `updatedAt` and `addonVersion` are `null`. |
 | `updatedAt` | number or `null` | Last change to their Bot'tar Sync data (Unix). |
 | `addonVersion` | text or `null` | The version of Bot'tar Sync they use. |
+| `discord` | text or `null` | The Discord username of the character's player, as they typed it in game, in small letters as Discord keeps usernames (2 to 32 letters, digits, `_` or `.`). Nothing checks it against Discord. It belongs to the WoW account, so every character of the account has it, and characters on two accounts with the same name are the same player. `null` until the account gives one (Bot'tar Sync 0.5 or later asks for it), and for members without the addon. |
+| `main` | boolean or `null` | `true` for one of the player's mains (a player may have several), `false` for an alt. `null` when `discord` is. |
 | `itemLevel` | number or `null` | Average item level of the equipped items, with decimals. From Guild Builds, while they share their gear. |
 | `professions` | list or `null` | See below. From Guild Professions & Recipes. |
 | `talents` | object or `null` | See below. From Guild Builds; `null` until they could be read, e.g. for characters that have no talents yet. |
@@ -265,6 +269,8 @@ Alice's second spec is cut short.
           "hasAddon": true,
           "updatedAt": 1760000005,
           "addonVersion": "0.1.0",
+          "discord": "alice.smith",
+          "main": true,
           "itemLevel": 74.5,
           "professions": [
             {
@@ -330,6 +336,8 @@ Alice's second spec is cut short.
           "hasAddon": false,
           "updatedAt": null,
           "addonVersion": null,
+          "discord": null,
+          "main": null,
           "itemLevel": null,
           "professions": null,
           "talents": null,

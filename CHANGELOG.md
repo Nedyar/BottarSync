@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.5.0 - Who plays each character
+
+- **Your Discord username**: a member whose account has none yet is asked for it a little after logging in or joining the guild, in a box with an Accept button. It is the account's unique username, in small letters (2 to 32 letters, numbers, `_` or `.`), not the display name nor a server nickname: the box says so, and its tooltip tells where Discord shows it.
+- **My data**: a new button on the game's guild window, at the bottom right of the guild's Chat and Roster tabs (Invite Member and Guild Settings move left of it), opens a window where you change your Discord username and tick which of your characters are mains; the others are alts, and you may have several mains. A character whose line is cut shows it whole in a tooltip. A change reaches the guild within seconds. The game's Guild Settings button is widened to show its whole name, which was cut in some languages.
+- The name and the mains belong to your WoW account: every character of the account carries them, also while offline, and characters on another account with the same Discord name count as the same player.
+- **The file for the bot** gives each member a `discord` (their player's Discord name) and a `main` (true for a main, false for an alt).
+- Members on 0.4 or before cannot read this version's data, and are told to update. This version still reads their changes.
+
 ## 0.4.0 - Each addon shares its own part
 
 - **Bot'tar Sync shares the character alone**: name, realm, level, class, race, sex and faction. Professions and recipes are Guild Professions & Recipes' to share, and talents, the items worn and the item level Guild Builds' (0.2 or later), so nothing travels twice.

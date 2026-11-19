@@ -12,6 +12,17 @@
 return function(H)
     dofile(ADDON_PATH .. "/../GuildBuilds/Tests/game.lua")(H)
 
+    -- Edit boxes have the keyboard while a test says so (_focus).
+    H.FrameMethods.HasFocus = function(self)
+        return self._focus == true
+    end
+    -- A text's height: 12 pixels a line, its lines as wide as the text is
+    -- set to be (6 pixels a character, as GetStringWidth).
+    H.FrameMethods.GetStringHeight = function(self)
+        local width = 6 * #(self._text or "")
+        return 12 * math.max(1, math.ceil(width / (self._width or math.huge)))
+    end
+
     H.MAGE_TREE = {
         id = 774,
         tabs = { { groupID = 21, name = "Arcane" }, { groupID = 22, name = "Fire" }, { groupID = 23, name = "Frost" } },
