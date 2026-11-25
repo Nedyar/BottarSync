@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.1 - The guild window from the Statistics window
+
+- **A guild window button on the Statistics window**: the guild tabard, left of its close button, as on KinFolk's window. It opens and closes the game's guild window, and the Statistics window stays open.
+- Members on 0.9.0 and this version share everything: nobody has to update at once.
+
 ## 0.9.0 - The guild's Discord on the Guild Info tab
 
 - **Members on 0.8 must update.** What the officers set now carries the guild's Discord link, which 0.8 would leave out of the copies it passes on. Members on 0.8 see a "newer version" notice and stop getting the changes of members on 0.9 until they update; 0.9 still gets theirs.

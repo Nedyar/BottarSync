@@ -3,7 +3,8 @@
 -- KinFolk (a guild hub addon by another author) comes with Bot'tar Sync for
 -- the guild's members. Bot'tar Sync puts a button with the guild tabard on
 -- KinFolk's window, left of its close button, that opens and closes the
--- game's guild window (the other window stays as it is). A key binding (the
+-- game's guild window (the other window stays as it is): the same as on
+-- the Statistics window (TitleButton.lua). A key binding (the
 -- game's Key Bindings, AddOns) opens and closes KinFolk. Nothing here reads
 -- KinFolk's data. Until 0.9 the game's guild window had a button with
 -- KinFolk's logo too, where its Statistics button is now (Stats.lua).
@@ -21,10 +22,6 @@ local TitleButton = ns.TitleButton
 local KinFolk = {}
 ns.KinFolk = KinFolk
 
--- The tabard's shape weighs on its lower half, so it goes a pixel higher
--- (raise) to look centered, as seen in game.
-KinFolk.GUILD_ICON = "Interface\\Icons\\INV_Shirt_GuildTabard_01"
-KinFolk.GUILD_ICON_CROP = { 0.08, 0.92, 0.08, 0.92, raise = 1 }
 KinFolk.WINDOW = "KinFolkMainWindow"
 KinFolk.BROKER = "KinFolk"
 KinFolk.J_KEY_BUTTON = "KinFolkJKeyButton"
@@ -42,14 +39,7 @@ function KinFolk.AttachToWindow()
     if windowButton or type(window) ~= "table" or not window.CreateTexture then
         return
     end
-    local close = window.CloseButton
-    windowButton = TitleButton.New(window, close or window, TitleButton.SizeOf(close), KinFolk.GUILD_ICON,
-        KinFolk.GUILD_ICON_CROP, GUILD or "Guild", L["Open or close the game's guild window"], KinFolk.ToggleGuildWindow)
-    if close then
-        TitleButton.PlaceLeftOf(windowButton, close, close)
-    else
-        windowButton:SetPoint("TOPRIGHT", window, "TOPRIGHT", -30, -4)
-    end
+    windowButton = TitleButton.NewGuildButton(window)
     KinFolk.windowButton = windowButton
 end
 
@@ -64,13 +54,6 @@ function KinFolk.Toggle()
         return
     end
     KinFolk.AttachToWindow()
-end
-
--- Opens or closes the game's guild window, as its key does.
-function KinFolk.ToggleGuildWindow()
-    if type(ToggleGuildFrame) == "function" then
-        ToggleGuildFrame()
-    end
 end
 
 -- KinFolk may open by itself (its welcome page, a notice): our button goes

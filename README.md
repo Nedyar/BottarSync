@@ -35,7 +35,9 @@ guild's other addons share.
   Guild Bank Alts' bank ranks; members without Bot'tar Sync count as mains),
   a bar of the classes (and of the chosen class's specializations, from
   Guild Builds) and the members by level, with the list of the members
-  beside them. A click on any number filters the list. The roster itself lists
+  beside them. A click on any number filters the list. A button with the
+  guild tabard on its title bar opens and closes the guild window, and the
+  Statistics window stays open. The roster itself lists
   everyone, as the game does (the game blocks changing notes and ranks from
   rows an addon drew); a member's tooltip there always shows, with their
   player's Discord username, mains and alts.

@@ -156,7 +156,7 @@ back._scripts.OnEnter(back)
 H.eq(env.GameTooltip._text, "Guild", "its tooltip names the guild window")
 -- The icons' files, as the game names them (a lost backslash leaves an
 -- empty button in game).
-H.eq(KF.GUILD_ICON, "Interface\\Icons\\INV_Shirt_GuildTabard_01", "the guild tabard's icon")
+H.eq(client.ns.TitleButton.GUILD_ICON, "Interface\\Icons\\INV_Shirt_GuildTabard_01", "the guild tabard's icon")
 H.eq(client.ns.Stats.ICON, "Interface\\Icons\\INV_Misc_Spyglass_03", "the Statistics button's icon")
 
 Click(back)

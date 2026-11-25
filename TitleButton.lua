@@ -1,6 +1,8 @@
 -- TitleButton.lua: a button with an icon for a window's title bar, beside
 -- its close button: the Statistics button on the game's guild window
--- (Stats.lua) and the guild button on KinFolk's window (KinFolk.lua).
+-- (Stats.lua), and the guild button (the guild tabard, that opens and
+-- closes the game's guild window) on KinFolk's window (KinFolk.lua) and on
+-- the Statistics window.
 --
 -- It looks like the game's own title bar buttons: the red frame of its
 -- close button, with its pressed and highlight looks, as big as the
@@ -12,6 +14,7 @@
 -- top, bottom, and raise: pixels up, for an icon whose shape weighs on its
 -- lower half, to look centered).
 local _, ns = ...
+local L = ns.L
 
 local TitleButton = {}
 ns.TitleButton = TitleButton
@@ -25,6 +28,10 @@ TitleButton.PLAIN = { 0.17, 0.22 } -- a column of the frame with only red in it
 TitleButton.ICON = 0.19 -- the margin around the icon, part of the size
 TitleButton.GAP = 2 -- between title bar buttons, when it cannot be measured
 TitleButton.ICON_CROP = { 0.08, 0.92, 0.08, 0.92 } -- a game icon without its border
+-- The guild tabard's shape weighs on its lower half, so it goes a pixel
+-- higher (raise) to look centered, as seen in game.
+TitleButton.GUILD_ICON = "Interface\\Icons\\INV_Shirt_GuildTabard_01"
+TitleButton.GUILD_ICON_CROP = { 0.08, 0.92, 0.08, 0.92, raise = 1 }
 
 local function HasAtlas(name)
     return C_Texture ~= nil and C_Texture.GetAtlasInfo ~= nil and C_Texture.GetAtlasInfo(name) ~= nil
@@ -126,5 +133,26 @@ function TitleButton.New(parent, neighbor, size, icon, crop, title, line, onClic
         GameTooltip:Show()
     end)
     button:SetScript("OnLeave", GameTooltip_Hide)
+    return button
+end
+
+-- Opens or closes the game's guild window, as its key does.
+function TitleButton.ToggleGuildWindow()
+    if type(ToggleGuildFrame) == "function" then
+        ToggleGuildFrame()
+    end
+end
+
+-- The guild button on window's title bar, left of its close button: it
+-- opens and closes the game's guild window, and leaves window as it is.
+function TitleButton.NewGuildButton(window)
+    local close = window.CloseButton
+    local button = TitleButton.New(window, close or window, TitleButton.SizeOf(close), TitleButton.GUILD_ICON,
+        TitleButton.GUILD_ICON_CROP, GUILD or "Guild", L["Open or close the game's guild window"], TitleButton.ToggleGuildWindow)
+    if close then
+        TitleButton.PlaceLeftOf(button, close, close)
+    else
+        button:SetPoint("TOPRIGHT", window, "TOPRIGHT", -30, -4)
+    end
     return button
 end

@@ -122,6 +122,10 @@ local function Globals(client)
             return name == "communitiesShowOffline" and client.showOffline or false
         end,
         LOCALIZED_CLASS_NAMES_MALE = { HUNTER = "Hunter", MAGE = "Mage", WARRIOR = "Warrior" },
+        -- The guild window's key: counts the clicks.
+        ToggleGuildFrame = function()
+            client.guildToggles = (client.guildToggles or 0) + 1
+        end,
         -- How the game's roster tells how long ago a member was online.
         TimeUtil = {
             GetRecentTimeDate = function(years, months, days, hours)
@@ -343,6 +347,17 @@ H.eq(window._point[4], 900, "dragged again, it just moves")
 Click(button)
 Click(button)
 H.check(window:IsShown() and window._point[2] == env.CommunitiesFrame, "opened again, it is beside the guild window")
+-- The guild tabard on its title bar, as on KinFolk's window.
+local guildButton = window.GuildButton
+H.check(guildButton ~= nil and guildButton._parent == window and guildButton.Icon ~= nil,
+    "a button with the guild tabard on its title bar")
+guildButton._scripts.OnEnter(guildButton)
+H.eq(env.GameTooltip._text, "Guild", "its tooltip names the guild window")
+Click(guildButton)
+H.eq(officer.guildToggles, 1, "it closes the game's guild window")
+Click(guildButton)
+H.eq(officer.guildToggles, 2, "and opens it again")
+H.check(window:IsShown(), "the Statistics window stays open")
 local cards = window.kindCards
 H.check(cards.main.Number._text == "3" and cards.alt.Number._text == "1" and cards.bank.Number._text == "1" and cards.all.Number._text == "5",
     "a card for each kind, with its number")

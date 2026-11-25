@@ -492,6 +492,9 @@ local function Create()
     tinsert(UISpecialFrames, window:GetName())
     window:SetTitle(L["Guild statistics"])
     window:SetPortraitToAsset(Stats.ICON)
+    -- The guild tabard, left of its close button, as on KinFolk's window:
+    -- it opens and closes the game's guild window, and this one stays.
+    window.GuildButton = ns.TitleButton.NewGuildButton(window)
     window:SetScript("OnHide", function()
         window.Search:SetText("")
         window.Search:ClearFocus()
