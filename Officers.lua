@@ -14,7 +14,12 @@
 --   a = { [GUID] = { d = username, or false for nobody, m = true for a
 --       main, t = time } }: whose a character is, and whether it is a main.
 --       d is the username as it shows after the renames, and a rename
---       changes it in each of them.
+--       changes it in each of them;
+--   g = { v = text, t = time }: the guild's Discord link (since 0.9), which
+--       the Guild Info tab shows under the message of the day (InfoTab.lua);
+--       v = "" once taken away. In this version of the game, the guild
+--       information is edited by the officers too (the rank settings have
+--       no box of its own for it).
 -- The newest of each, among the records of the guild's current officers,
 -- holds. Each officer's client keeps all of them in its own record, so they
 -- last while any officer is around, also when the one who made them no
@@ -64,6 +69,20 @@ end
 
 -- Checks -----------------------------------------------------------------------------------
 
+-- A link as it may be kept: trimmed, one line, without the game's escape
+-- character (|), at most LIMITS.link bytes. "" for none; nil when it does
+-- not fit.
+function Officers.CleanLink(text)
+    if type(text) ~= "string" then
+        return nil
+    end
+    text = strtrim((text:gsub("[%c|]", "")))
+    if #text > ns.Pack.LIMITS.link then
+        return nil
+    end
+    return text
+end
+
 -- A checked copy of a record's ov, or nil when it holds nothing (or too
 -- much). now is given for records from other clients: what is dated in the
 -- future is left out, as it would win over every later change.
@@ -98,7 +117,11 @@ function Officers.Clean(ov, now)
     if renames > limits.renames or assignments > limits.assignments then
         return nil
     end
-    if renames + assignments == 0 then
+    local link = type(ov.g) == "table" and Dated(ov.g) and Officers.CleanLink(ov.g.v)
+    if link and link == ov.g.v then
+        clean.g = { v = link, t = ov.g.t }
+    end
+    if renames + assignments == 0 and not clean.g then
         return nil
     end
     return clean
@@ -115,14 +138,14 @@ local function Newer(a, b)
     if a.t ~= b.t then
         return a.t > b.t
     end
-    local ka = tostring(a.n or a.d) .. (a.m and "1" or "0")
-    local kb = tostring(b.n or b.d) .. (b.m and "1" or "0")
+    local ka = tostring(a.n or a.d or a.v) .. (a.m and "1" or "0")
+    local kb = tostring(b.n or b.d or b.v) .. (b.m and "1" or "0")
     return ka > kb
 end
 
 -- The newest of each change among the officers' records ({ [GUID] = record
--- }): { r = renames, a = assignments }, as in a record's ov. Its items are
--- the records' own: not to be changed.
+-- }): { r = renames, a = assignments, g = the guild's Discord link or nil },
+-- as in a record's ov. Its items are the records' own: not to be changed.
 function Officers.Effective(records)
     local effective = { r = {}, a = {} }
     for guid, record in pairs(records) do
@@ -137,6 +160,9 @@ function Officers.Effective(records)
                 if Newer(item, effective.a[target]) then
                     effective.a[target] = item
                 end
+            end
+            if ov.g and Newer(ov.g, effective.g) then
+                effective.g = ov.g
             end
         end
     end
@@ -185,6 +211,9 @@ local function Copy(effective)
     for guid, item in pairs(effective.a) do
         copy.a[guid] = { d = item.d, m = item.m, t = item.t }
     end
+    if effective.g then
+        copy.g = { v = effective.g.v, t = effective.g.t }
+    end
     return copy
 end
 
@@ -214,7 +243,7 @@ function Officers.Merge()
         return
     end
     local copy = Copy(Officers.Current())
-    if next(copy.r) == nil and next(copy.a) == nil then
+    if next(copy.r) == nil and next(copy.a) == nil and not copy.g then
         copy = nil
     end
     if not ns.Same(record.ov, copy) then
@@ -306,6 +335,28 @@ function Officers.RenamePlayer(from, to)
         record.ov = Copy(effective)
         return false, "full"
     end
+    Touch(record)
+    return true
+end
+
+-- The guild's Discord link ("" or nil: none).
+function Officers.GuildLink()
+    local item = Officers.Current().g
+    return item and item.v ~= "" and item.v or nil
+end
+
+-- Sets the guild's Discord link ("" takes it away). Returns true, or false
+-- when we are not an officer or the text is too long.
+function Officers.SetGuildLink(text)
+    local link = Officers.CleanLink(text)
+    local record, effective = Writable()
+    if not record or not link then
+        return false
+    end
+    if (effective.g and effective.g.v or "") == link then
+        return true
+    end
+    record.ov.g = { v = link, t = Stamp(effective.g) }
     Touch(record)
     return true
 end

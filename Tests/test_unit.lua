@@ -51,8 +51,9 @@ key, back = Pack.ReadRecord(Pack.Reader(Pack.RecordString(GUID, profiled)))
 back.p = nil
 H.check(ns.Same(back, profiled), "record round trip with the profile: key, Discord name, time, mains and alts")
 -- A record cut where an older version's ends: of 0.4 or before after the
--- talents (an empty profile is 4 bytes, and nothing set by officers 2), of
--- 0.5 to 0.7 after the profile.
+-- talents (an empty profile is 4 bytes, and nothing set by officers 4: two
+-- empty lists, and the guild's link, empty and undated), of 0.5 to 0.7
+-- after the profile, of 0.8 before the guild's link.
 local function Cut(guid, rec, bytes)
     local body0 = Pack.RecordString(guid, rec)
     local reader0 = Pack.Reader(body0)
@@ -61,9 +62,9 @@ local function Cut(guid, rec, bytes)
     short:Str(body0:sub(reader0.pos, reader0.pos + length0 - 1 - bytes))
     return Pack.ReadRecord(Pack.Reader(short:Result()))
 end
-key, back = Cut(GUID, record, 4 + 2)
+key, back = Cut(GUID, record, 4 + 4)
 H.check(key == GUID and back.l == 60 and back.ak == nil and back.ch == nil, "a record from before 0.5 reads, without a profile")
-key, back = Cut(GUID, profiled, 2)
+key, back = Cut(GUID, profiled, 4)
 H.check(key == GUID and back.dc == "solo.name" and back.ch[GUID] == true and back.ov == nil,
     "a record of 0.5 to 0.7 reads, with its profile and nothing set by officers")
 -- With what the officers set (0.8).
@@ -76,6 +77,23 @@ officered.ov = {
 key, back = Pack.ReadRecord(Pack.Reader(Pack.RecordString(GUID, officered)))
 back.p = nil
 H.check(ns.Same(back, officered), "record round trip with what the officers set: renames, and whose each character is")
+key, back = Cut(GUID, officered, 2)
+back.p = nil
+H.check(ns.Same(back, officered), "a record of 0.8 reads, with what the officers set and no guild link")
+-- With the guild's Discord link (0.9), and once taken away.
+local linked = H.DeepCopy(officered)
+linked.ov.g = { v = "https://discord.gg/abc123", t = now - 5 }
+key, back = Pack.ReadRecord(Pack.Reader(Pack.RecordString(GUID, linked)))
+back.p = nil
+H.check(ns.Same(back, linked), "record round trip with the guild's Discord link")
+local unlinked = H.DeepCopy(profiled)
+unlinked.ov = { r = {}, a = {}, g = { v = "", t = now } }
+key, back = Pack.ReadRecord(Pack.Reader(Pack.RecordString(GUID, unlinked)))
+back.p = nil
+H.check(ns.Same(back, unlinked), "and with the link taken away, which still counts")
+local long = H.DeepCopy(profiled)
+long.ov = { r = {}, a = {}, g = { v = ("x"):rep(Pack.LIMITS.link + 1), t = now } }
+H.check(not pcall(Pack.ReadRecord, Pack.Reader(Pack.RecordString(GUID, long))), "a link too long is refused")
 key, back = Pack.ReadRecord(Pack.Reader(Pack.RecordString(GUID, profiled)))
 H.eq(back.ov, nil, "a record that sets nothing reads without it")
 local crowded = H.DeepCopy(officered)

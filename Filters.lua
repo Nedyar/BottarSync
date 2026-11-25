@@ -20,8 +20,11 @@
 -- or of the class chosen) and a level range, while it is open. Each number
 -- counts the members
 -- that every other filter lets through, so it tells how many a click on it
--- lists. Offline members count while the game's roster shows them (its own
--- "Offline members" box).
+-- lists. Offline members count while the window's "Offline members" box,
+-- beside its Characters heading, is ticked. It starts as the game's own box
+-- on the Roster tab, and follows it when that one is clicked; ours changes
+-- only the window, as the game's roster could not be told without its rows
+-- being drawn by our code (see below).
 --
 -- The game's roster itself is never filtered: the game blocks changing a
 -- member's notes or rank from a row of the roster that an addon's code drew
@@ -141,16 +144,35 @@ function Filters.Everyone()
     return list
 end
 
+-- Whether offline members count: as the window's box says, or, until it is
+-- clicked, as the game's roster box was left (its setting).
+function Filters.ShowsOffline()
+    if Filters.showOffline ~= nil then
+        return Filters.showOffline
+    end
+    return ns.Try(GetCVarBool, "communitiesShowOffline") ~= false
+end
+
+-- The window's box, or the game's roster box, was clicked.
+function Filters.SetShowOffline(show)
+    show = show == true
+    if Filters.ShowsOffline() ~= show then
+        Filters.showOffline = show
+        ns.Fire("FiltersChanged")
+    end
+    Filters.showOffline = show
+end
+
 -- The members the numbers count: the online ones, and the offline ones
--- while the roster shows them.
+-- while the window's box is ticked.
 function Filters.Population()
     if not members then
         Build()
     end
-    local offline = ns.Try(GetCVarBool, "communitiesShowOffline")
+    local offline = Filters.ShowsOffline()
     local list = {}
     for _, entry in pairs(members) do
-        if entry.online or offline ~= false then
+        if entry.online or offline then
             list[#list + 1] = entry
         end
     end

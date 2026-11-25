@@ -1,5 +1,6 @@
--- The buttons between the game's guild window and KinFolk's, and the key
--- binding (KinFolk.lua).
+-- The button from KinFolk's window to the game's guild window, and the key
+-- binding (KinFolk.lua); and the title bar button of the guild window,
+-- where KinFolk's was until 0.9 (TitleButton.lua, Stats.lua).
 local H = ...
 
 -- The game's guild window, with its minimize (or maximize) and close
@@ -126,32 +127,37 @@ local function ChildrenOf(client, parent)
     return count
 end
 
-H.section("KinFolk: the button on the guild window")
+H.section("KinFolk: the guild window's title bar")
 local client, kinfolk, KF = Setup("Kin Main")
 local env = client.env
 local communities = env.CommunitiesFrame
-local button = KF.guildWindowButton
-H.check(button ~= nil and button._parent == communities, "the guild window has our KinFolk button")
+H.eq(KF.guildWindowButton, nil, "KinFolk no longer has a button on the guild window")
+local button = client.ns.Stats.guildWindowButton
+H.check(button ~= nil and button._parent == communities and button:IsShown(), "the Statistics button is there instead")
 H.check(button._point[1] == "RIGHT" and button._point[2] == communities.MaximizeMinimizeFrame.MinimizeButton
-    and button._point[3] == "LEFT" and button._point[4] == -2, "the button sits left of the minimize button, 2 pixels away")
+    and button._point[3] == "LEFT" and button._point[4] == -2, "it sits left of the minimize button, 2 pixels away")
 button._scripts.OnMouseDown(button)
 button._scripts.OnMouseUp(button)
 communities:OnShow()
 H.check(button._point[2] == communities.MaximizeMinimizeFrame.MinimizeButton, "it stays there as the guild window opens")
 button._scripts.OnEnter(button)
-H.eq(env.GameTooltip._text, "KinFolk", "its tooltip names KinFolk")
+H.eq(env.GameTooltip._text, "Statistics", "its tooltip names the Statistics window")
 H.eq(env.KinFolkMainWindow, nil, "KinFolk's window does not exist before it opens")
 H.eq(KF.windowButton, nil, "nor does our button on it")
 
-Click(button)
+env.BottarSync_ToggleKinFolk()
 local window = env.KinFolkMainWindow
-H.check(window ~= nil and window:IsShown(), "the button opens KinFolk")
+H.check(window ~= nil and window:IsShown(), "the key opens KinFolk")
 local back = KF.windowButton
 H.check(back ~= nil and back._parent == window, "KinFolk's window gets our guild window button as it opens")
 H.check(back._point[1] == "RIGHT" and back._point[2] == window.CloseButton and back._point[3] == "LEFT",
     "the button sits left of KinFolk's close button")
 back._scripts.OnEnter(back)
 H.eq(env.GameTooltip._text, "Guild", "its tooltip names the guild window")
+-- The icons' files, as the game names them (a lost backslash leaves an
+-- empty button in game).
+H.eq(KF.GUILD_ICON, "Interface\\Icons\\INV_Shirt_GuildTabard_01", "the guild tabard's icon")
+H.eq(client.ns.Stats.ICON, "Interface\\Icons\\INV_Misc_Spyglass_03", "the Statistics button's icon")
 
 Click(back)
 H.eq(client.guildToggles, 1, "the button on KinFolk opens the game's guild window")
@@ -159,11 +165,11 @@ H.check(window:IsShown(), "and KinFolk stays open")
 Click(back)
 H.eq(client.guildToggles, 2, "a second click closes the guild window again")
 
-Click(button)
-H.check(not window:IsShown(), "a second click on the guild window's button closes KinFolk")
+env.BottarSync_ToggleKinFolk()
+H.check(not window:IsShown(), "the key again closes KinFolk")
 H.eq(client.guildToggles, 2, "and leaves the guild window alone")
-Click(button)
-Click(button)
+env.BottarSync_ToggleKinFolk()
+env.BottarSync_ToggleKinFolk()
 H.check(KF.windowButton == back and ChildrenOf(client, window) == 2,
     "KinFolk's window keeps a single button of ours (next to its close button)")
 
@@ -220,7 +226,8 @@ H.check(bindings ~= nil and bindings:find('name="BOTTARSYNC_KINFOLK"', 1, true) 
 
 H.section("KinFolk: not installed")
 client, kinfolk, KF = Setup("Kin Absent", { absent = true })
-H.eq(KF.guildWindowButton, nil, "without KinFolk the guild window gets no button")
+H.check(client.ns.Stats.guildWindowButton ~= nil and client.ns.Stats.guildWindowButton:IsShown(),
+    "without KinFolk the guild window still has the Statistics button")
 local printed = #client.printed
 client.env.BottarSync_ToggleKinFolk()
 H.check(#client.printed == printed + 1 and client.printed[#client.printed]:find("KinFolk is not installed", 1, true) ~= nil,

@@ -105,4 +105,9 @@ ns.RegisterLocale("koKR", function(L)
     L["Last online"] = "최근 접속"
     L["Find a player"] = "플레이어 찾기"
     L["Type their Discord username, or the name of any character of theirs."] = "디스코드 사용자 이름이나 그 플레이어의 캐릭터 이름을 입력하세요."
+    L["The guild's Discord link"] = "길드 디스코드 링크"
+    L["Enter saves it; Esc leaves it as it was."] = "Enter 키로 저장하고, Esc 키로 원래대로 둡니다."
+    L["No link yet."] = "아직 링크가 없습니다."
+    L["Select the link to copy"] = "복사할 링크 선택"
+    L["Selects the link: press Ctrl+C to copy it."] = "링크를 선택합니다: Ctrl+C를 눌러 복사하세요."
 end)

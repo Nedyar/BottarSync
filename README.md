@@ -29,8 +29,8 @@ guild's other addons share.
   member in the Statistics window's list), and change their username,
   mains and characters, also for members without Bot'tar Sync. What they set
   counts at once and prevails over what the player says.
-- **The guild in numbers.** A **Statistics** button left of Offline members,
-  on the guild window's Roster tab, opens a window beside the guild window:
+- **The guild in numbers.** A **Statistics** button on the guild window's
+  title bar, left of its minimize button, opens a window beside it:
   how many mains, alts and bank characters there are (bank characters by
   Guild Bank Alts' bank ranks; members without Bot'tar Sync count as mains),
   a bar of the classes (and of the chosen class's specializations, from
@@ -39,6 +39,12 @@ guild's other addons share.
   everyone, as the game does (the game blocks changing notes and ranks from
   rows an addon drew); a member's tooltip there always shows, with their
   player's Discord username, mains and alts.
+- **The Guild Info tab.** The message of the day shows whole, with no
+  arrows to scroll it, and under it a Discord panel: the guild's Discord
+  link, which the guild master and the officers change (its Edit link) and
+  anyone copies (its copy button selects it, for Ctrl+C: the game lets no
+  addon write to the clipboard). The guild information takes the rest of
+  the column, down to the bottom.
 - **What the other addons share goes into the file too.** Each guild addon
   shares its own part, and Bot'tar Sync reads it from them when it writes
   the file: professions and recipes from Guild Professions & Recipes;
@@ -69,11 +75,9 @@ guild's other addons share.
   but runs without them: a member who turns one off keeps sharing their
   characters, and a file written without one goes without its part
   (`/bottar status` says so).
-- **Between the guild window and KinFolk.** With KinFolk on, the game's guild
-  window gets a button with KinFolk's logo, left of its minimize and close
-  buttons, that opens and closes KinFolk; KinFolk's window gets a button with
-  the guild tabard, left of its close button, that opens and closes the
-  game's guild window. A key binding (Key Bindings, AddOns, Bot'tar Sync)
+- **From KinFolk to the guild window.** With KinFolk on, KinFolk's window
+  gets a button with the guild tabard, left of its close button, that opens
+  and closes the game's guild window. A key binding (Key Bindings, AddOns, Bot'tar Sync)
   opens and closes KinFolk too, such as Shift+J while J keeps the game's
   guild window.
 
@@ -126,11 +130,11 @@ They load the real files of LibGuildSync, of the two addons and of this one
 into simulated clients that talk through a simulated server, and check the
 sync, the saved data, the JSON (with the builds read from the game's import
 strings, which the tests make in the game's format) and, when Node.js is
-installed, the bot's reader on files written the way the game writes them. Another checks the KinFolk buttons and key
+installed, the bot's reader on files written the way the game writes them. Another checks the KinFolk button and key
 against a stand-in for KinFolk's public pieces, and another the Discord name box, the My data
 window and its button, and how a profile travels between the characters of an account and the
 guild. Another checks the roster's filters, its tooltips and the Statistics window against a
-stand-in for the game's member list. One test puts members on the last release
+stand-in for the game's member list, and another the Guild Info tab and the guild's Discord link. One test puts members on the last release
 (taken from its git tag) in the same guild as members on this version.
 
 ## Releasing

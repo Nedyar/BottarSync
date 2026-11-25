@@ -1,6 +1,6 @@
 -- Stats.lua: the Statistics window, beside the game's guild window and as
--- tall as it, opened by the Statistics button of the Roster tab
--- (RosterView.lua). It can be dragged elsewhere, and opens beside the guild
+-- tall as it, opened by the Statistics button on the guild window's title
+-- bar (below). It can be dragged elsewhere, and opens beside the guild
 -- window again. It counts the guild's members (Filters.lua), and lists
 -- right of the numbers the members the filters let through; a click on a
 -- number filters the list:
@@ -580,6 +580,20 @@ local function Create()
     local gap = Stats.GAP
     local y = 0
     window.KindsHeading = Heading(L["Characters"], y)
+    -- The game's own "Offline members" box, as its roster has it: offline
+    -- members count while it is ticked (Filters.ShowsOffline).
+    local offline = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
+    offline:SetPoint("LEFT", window.KindsHeading, "RIGHT", 8, 0)
+    if offline.Text then
+        offline.Text:SetText(COMMUNITIES_MEMBER_LIST_SHOW_OFFLINE or "Offline members")
+    end
+    offline:SetScript("OnClick", function(self)
+        if SOUNDKIT then
+            PlaySound(SOUNDKIT.IG_MAINMENU_OPTION_CHECKBOX_ON)
+        end
+        Filters.SetShowOffline(self:GetChecked())
+    end)
+    window.OfflineBox = offline
     y = y - 20
     window.kindCards = {}
     local width = (Stats.CONTENT_WIDTH - 3 * gap) / 4
@@ -702,6 +716,7 @@ end
 -- Shows the numbers as they are now.
 local function Draw()
     local counts = Filters.Counts()
+    window.OfflineBox:SetChecked(Filters.ShowsOffline())
     local chosen = Filters.kind or "all"
     for _, kind in ipairs(KIND_ORDER) do
         local count = kind == "all" and counts.all or counts.kinds[kind]
@@ -794,13 +809,51 @@ function Stats.Window()
     return window
 end
 
+-- The button that opens it: on the guild window's title bar, left of its
+-- minimize button (TitleButton.lua), while we are in a guild. Until 0.9 it
+-- was on the Roster tab.
+local guildWindowButton
+
+local function UpdateGuildWindowButton()
+    local communities = CommunitiesFrame
+    local frame = communities.MaximizeMinimizeFrame
+    local close = communities.CloseButton
+    -- The minimize and maximize buttons take turns in the same spot.
+    local neighbor = frame and (frame.MinimizeButton or frame.MaximizeButton or frame) or close
+    if neighbor then
+        ns.TitleButton.PlaceLeftOf(guildWindowButton, neighbor, close)
+    else
+        guildWindowButton:ClearAllPoints()
+        guildWindowButton:SetPoint("TOPRIGHT", communities, "TOPRIGHT", -30, -4)
+    end
+    guildWindowButton:SetShown(IsInGuild() == true)
+end
+
+local function SetupGuildWindow()
+    local communities = CommunitiesFrame
+    if guildWindowButton or not (communities and communities.CreateTexture) then
+        return
+    end
+    local frame = communities.MaximizeMinimizeFrame
+    local close = communities.CloseButton
+    local neighbor = frame and (frame.MinimizeButton or frame.MaximizeButton or frame) or close or communities
+    guildWindowButton = ns.TitleButton.New(communities, neighbor, ns.TitleButton.SizeOf(close), Stats.ICON,
+        ns.TitleButton.ICON_CROP, L["Statistics"], L["The guild's members in numbers, and a list of them to filter."],
+        Stats.Toggle)
+    Stats.guildWindowButton = guildWindowButton
+    UpdateGuildWindowButton()
+    -- Secure hooks of the window's own OnShow and OnHide (its XML calls the
+    -- methods by name), never HookScript: see KinFolk.lua. Once shown, the
+    -- gap between the game's buttons can be measured.
+    if type(communities.OnShow) == "function" then
+        hooksecurefunc(communities, "OnShow", UpdateGuildWindowButton)
+    end
+    -- The window belongs to the guild window: it goes with it.
+    if type(communities.OnHide) == "function" then
+        hooksecurefunc(communities, "OnHide", Stats.Hide)
+    end
+end
+
 function Stats.Init()
-    -- It belongs to the guild window: it goes with it.
-    EventUtil.ContinueOnAddOnLoaded("Blizzard_Communities", function()
-        -- A secure hook of the window's own OnHide, never HookScript: see
-        -- KinFolk.lua.
-        if CommunitiesFrame and type(CommunitiesFrame.OnHide) == "function" then
-            hooksecurefunc(CommunitiesFrame, "OnHide", Stats.Hide)
-        end
-    end)
+    EventUtil.ContinueOnAddOnLoaded("Blizzard_Communities", SetupGuildWindow)
 end

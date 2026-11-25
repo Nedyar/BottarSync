@@ -3,8 +3,10 @@
 -- the guild's officers may set over what the players say: Officers.lua), and
 -- writes them, as JSON, into the saved variables file for the Bot'tar bot,
 -- together with what the guild's other addons share (Sources.lua). From the
--- game's guild roster it opens a Statistics window, with a list of the
--- members to filter (Filters.lua, Stats.lua, RosterView.lua).
+-- game's guild window it opens a Statistics window, with a list of the
+-- members to filter (Filters.lua, Stats.lua, RosterView.lua), and its Guild
+-- Info tab shows the whole message of the day and the guild's Discord link
+-- (InfoTab.lua).
 --
 -- The addon messages, the guild roster, the saved database and the sync
 -- are LibGuildSync's (a separate addon this one depends on), attached
@@ -24,12 +26,12 @@ Lib.Attach(ns, {
     prefix = "BottarSync",
     trialPrefix = "BottarSyncTest",
     trial = false,
-    -- 4: an officer's record carries what the officers set (0.8), which
-    -- 0.7 and before would leave out of the copies they pass on. Still
-    -- read: 3, the changes of members on 0.7, 2, those of members on 0.5
-    -- and 0.6, and 1, those of members on 0.4 and before.
-    protocol = "4",
-    legacy = { ["1"] = true, ["2"] = true, ["3"] = true },
+    -- 5: what the officers set carries the guild's Discord link (0.9),
+    -- which 0.8 would leave out of the copies it passes on. Still read: 4,
+    -- the changes of members on 0.8, 3, those of members on 0.7, 2, those
+    -- of members on 0.5 and 0.6, and 1, those of members on 0.4 and before.
+    protocol = "5",
+    legacy = { ["1"] = true, ["2"] = true, ["3"] = true, ["4"] = true },
     savedVariable = "BottarSyncDB",
 })
 
@@ -89,7 +91,7 @@ events:SetScript("OnEvent", function(self, event, name)
         -- Each part starts on its own, so a failure in one (reported as a normal
         -- Lua error) does not stop the others.
         for _, init in ipairs({ ns.Character.Init, ns.Officers.Init, ns.Profile.Init, ns.Export.Init, ns.KinFolk.Init,
-            ns.MyData.Init, ns.Filters.Init, ns.Stats.Init, ns.RosterView.Init }) do
+            ns.MyData.Init, ns.Filters.Init, ns.Stats.Init, ns.RosterView.Init, ns.InfoTab.Init }) do
             xpcall(init, geterrorhandler())
         end
     end

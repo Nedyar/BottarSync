@@ -44,6 +44,20 @@ return function(H)
         end
         return description
     end
+    -- An edit box's cursor, a text's vertical alignment and a button's
+    -- font, which the tests do not check; a button's text.
+    H.NoOpMethods.SetCursorPosition = true
+    H.NoOpMethods.SetVerticalScroll = true
+    H.NoOpMethods.SetNonSpaceWrap = true
+    H.NoOpMethods.SetJustifyV = true
+    H.NoOpMethods.SetNormalFontObject = true
+    H.FrameMethods.GetFontString = H.FrameMethods.GetFontString or function(self)
+        if not rawget(self, "_fontString") then
+            rawset(self, "_fontString", H.NewObject(self._client, "FontString"))
+        end
+        self._fontString._text = self._text
+        return self._fontString
+    end
     -- A text's height: 12 pixels a line, its lines as wide as the text is
     -- set to be (6 pixels a character, as GetStringWidth).
     H.FrameMethods.GetStringHeight = function(self)

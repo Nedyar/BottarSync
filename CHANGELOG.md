@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.0 - The guild's Discord on the Guild Info tab
+
+- **Members on 0.8 must update.** What the officers set now carries the guild's Discord link, which 0.8 would leave out of the copies it passes on. Members on 0.8 see a "newer version" notice and stop getting the changes of members on 0.9 until they update; 0.9 still gets theirs.
+- **A Discord panel on the Guild Info tab**, under the message of the day and laid out like the game's own panels: the guild's Discord link. The guild master and the officers (the ranks with "Has officer privileges", who edit the guild information too) change it with its Edit link: Enter saves it, Esc leaves it as it was. It reaches the whole guild at once, and lasts while any officer is around. Anyone copies it with the button beside it, which selects it for Ctrl+C: the game lets no addon write to the clipboard.
+- **The whole message of the day**: the game showed it in a box three lines high, with arrows to scroll the rest; now it shows all of it.
+- **More room for the guild information**: it starts right under the Discord panel and goes down to the bottom, instead of a box 93 pixels high at the bottom, and scrolls only when it does not fit. Its Edit link is the game's own, as before.
+- **The Statistics button is on the guild window's title bar**, left of its minimize button, where KinFolk's button was, as an icon with its tooltip. The Roster tab no longer has it, and its Offline members box is back in its place.
+- **An Offline members box in the Statistics window**, beside its Characters heading, the same as the game's on the Roster tab: unticked, the numbers and the list count the online members only. It starts as the game's box was left, and follows it whenever that one is clicked; ticking ours changes only the window (were it to change the roster's, the game would block changing notes again).
+- **No more KinFolk button on the guild window.** KinFolk's window keeps its button to the guild window, and the key binding still opens KinFolk.
+
 ## 0.8.0 - The officers manage the players
 
 - **The guild master and the officers manage every player's data**: the officers are the members whose rank has the game's "Has officer privileges" (in the guild's rank settings). Their My data window has a search box at the top: type a Discord username or the name of any character of the guild, and the window shows that player's username and characters, to change as the player would: the username, the mains, adding any character of the guild and taking any out. My data goes back to their own.

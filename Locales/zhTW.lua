@@ -105,4 +105,9 @@ ns.RegisterLocale("zhTW", function(L)
     L["Last online"] = "最後上線"
     L["Find a player"] = "尋找玩家"
     L["Type their Discord username, or the name of any character of theirs."] = "輸入其 Discord 使用者名稱，或其任一角色的名稱。"
+    L["The guild's Discord link"] = "公會的 Discord 連結"
+    L["Enter saves it; Esc leaves it as it was."] = "Enter 儲存；Esc 保持原樣。"
+    L["No link yet."] = "尚無連結。"
+    L["Select the link to copy"] = "選取連結以複製"
+    L["Selects the link: press Ctrl+C to copy it."] = "選取連結：按 Ctrl+C 複製。"
 end)

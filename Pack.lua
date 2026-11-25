@@ -22,6 +22,7 @@ Pack.LIMITS = {
     profile = 60,    -- characters a profile tells mains from alts for
     renames = 100,   -- the officers' renames of players (Officers.lua)
     assignments = 400, -- characters the officers set the player of
+    link = 100,      -- the guild's Discord link, set by the officers
 }
 
 -- Records --------------------------------------------------------------------
@@ -55,7 +56,9 @@ Pack.LIMITS = {
 -- its character is one (see Officers.lua): ov = { r = { [username] = { n =
 -- new username, t = time } }, a = { [GUID] = { d = username or false, m =
 -- true for a main, t = time } } }, or nil. Records of 0.7 and before end
--- without it.
+-- without it. Since 0.9 (protocol 5) it also carries the guild's Discord
+-- link, after them: ov.g = { v = link ("" once taken away), t = time }.
+-- Records of 0.8 end without it.
 -- A packed record is prefixed by its length, so fields added later are
 -- skipped by older readers.
 local K_UNKNOWN, K_NONE, K_LIST = 0, 1, 2
@@ -264,6 +267,8 @@ local function WriteOfficers(writer, ov)
         writer:Byte(item.m and 1 or 0)
         writer:UInt(item.t)
     end
+    writer:Str(ov and ov.g and ov.g.v or "")
+    writer:UInt(ov and ov.g and ov.g.t or 0)
 end
 
 local function ReadOfficers(reader, record)
@@ -288,8 +293,14 @@ local function ReadOfficers(reader, record)
         local who = reader:Str(LIMITS.discord)
         ov.a[guid] = { d = who ~= "" and who or false, m = reader:Byte() == 1, t = reader:UInt() }
     end
+    if not reader:AtEnd() then
+        local link, time = reader:Str(LIMITS.link), reader:UInt()
+        if time > 0 then
+            ov.g = { v = link, t = time }
+        end
+    end
     -- Written empty by the characters that set nothing.
-    if next(ov.r) or next(ov.a) then
+    if next(ov.r) or next(ov.a) or ov.g then
         record.ov = ov
     end
 end

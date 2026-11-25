@@ -105,4 +105,9 @@ ns.RegisterLocale("zhCN", function(L)
     L["Last online"] = "最后在线"
     L["Find a player"] = "查找玩家"
     L["Type their Discord username, or the name of any character of theirs."] = "输入其 Discord 用户名，或其任一角色的名称。"
+    L["The guild's Discord link"] = "公会的 Discord 链接"
+    L["Enter saves it; Esc leaves it as it was."] = "回车保存；Esc 保持原样。"
+    L["No link yet."] = "尚无链接。"
+    L["Select the link to copy"] = "选中链接以复制"
+    L["Selects the link: press Ctrl+C to copy it."] = "选中链接：按 Ctrl+C 复制。"
 end)

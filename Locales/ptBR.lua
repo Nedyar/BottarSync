@@ -105,4 +105,9 @@ ns.RegisterLocale("ptBR", function(L)
     L["Last online"] = "Último acesso"
     L["Find a player"] = "Buscar jogador"
     L["Type their Discord username, or the name of any character of theirs."] = "Digite o nome de usuário do Discord dele, ou o nome de qualquer personagem dele."
+    L["The guild's Discord link"] = "O link do Discord da guilda"
+    L["Enter saves it; Esc leaves it as it was."] = "Enter salva; Esc deixa como estava."
+    L["No link yet."] = "Ainda não há link."
+    L["Select the link to copy"] = "Selecionar o link para copiar"
+    L["Selects the link: press Ctrl+C to copy it."] = "Seleciona o link: pressione Ctrl+C para copiá-lo."
 end)

@@ -1,18 +1,20 @@
--- RosterView.lua: Bot'tar Sync's pieces on the guild's Roster tab of the
--- game's guild window (CommunitiesFrame.MemberList):
---   - a Statistics button, where the game's "Offline members" box was (the
---     box moves right of it), which opens the Statistics window (Stats.lua);
---   - a member's tooltip always shows (the game's only did when a text was
---     cut), with their player's Discord username, mains and alts.
+-- RosterView.lua: Bot'tar Sync's piece on the guild's Roster tab of the
+-- game's guild window (CommunitiesFrame.MemberList): a member's tooltip
+-- always shows (the game's only did when a text was cut), with their
+-- player's Discord username, mains and alts. It also tells the Statistics
+-- window (Stats.lua) when the roster was filled again, and when the game's
+-- "Offline members" box was clicked, which the window's own box follows.
 --
 -- Its list stays the game's own, with every member: the game blocks
 -- changing a member's notes or rank (and removing them) from a row that an
 -- addon's code drew, and taking members out of the list, or having it
 -- drawn again, makes our code draw its rows. Until 0.8 the roster had boxes
 -- to hide kinds of characters; the Statistics window lists them instead.
--- So this file only hooks the game's functions (hooksecurefunc), moves its
--- box, and adds to tooltips. Nothing here runs while the roster shows
--- another community.
+-- Until 0.9 it had the Statistics button too, where the game's "Offline
+-- members" box was (the box moved right of it); the button is on the
+-- window's title bar now, and the box in its own place. So this file only
+-- hooks the game's functions (hooksecurefunc) and adds to tooltips. Nothing
+-- here runs while the roster shows another community.
 local _, ns = ...
 local L = ns.L
 local Filters = ns.Filters
@@ -20,15 +22,9 @@ local Filters = ns.Filters
 local RosterView = {}
 ns.RosterView = RosterView
 
--- The game's place for its "Offline members" box: above the list's top
--- left corner.
-local OFFLINE_X, OFFLINE_Y = 0, 26
-RosterView.BUTTON_Y = 31   -- our button, level with that box
-RosterView.BUTTON_HEIGHT = 22
 RosterView.DISCORD_COLOR = { 0.6, 0.65, 1 }
 
-local memberList, statsButton
-local offlineMoved = false
+local memberList
 local hooked = setmetatable({}, { __mode = "k" })
 
 local function IsGuild(list)
@@ -44,27 +40,8 @@ end
 
 -- The list ---------------------------------------------------------------------------------
 
--- Our button shows on the guild's roster, and the game's box moves for it.
-local function UpdateControls(list)
-    local active = Active(list)
-    statsButton:SetShown(active)
-    local offline = list.ShowOfflineButton
-    if offline and offlineMoved ~= active then
-        offlineMoved = active
-        offline:ClearAllPoints()
-        if active then
-            offline:SetPoint("LEFT", statsButton, "RIGHT", 6, 0)
-        else
-            offline:SetPoint("BOTTOMLEFT", list, "TOPLEFT", OFFLINE_X, OFFLINE_Y)
-        end
-    end
-end
-
--- Runs after the game fills the list (also when its "Offline members" box
--- changes, which the Statistics window counts by): it changes nothing in
--- the list.
+-- Runs after the game fills the list: it changes nothing in the list.
 local function ListShown(list)
-    UpdateControls(list)
     if Active(list) then
         ns.Fire("RosterShown")
     end
@@ -180,42 +157,26 @@ end
 
 -- Setup --------------------------------------------------------------------------------------
 
-local function ShowTooltip(owner, title, text)
-    GameTooltip:SetOwner(owner, "ANCHOR_TOP")
-    GameTooltip:SetText(title)
-    GameTooltip:AddLine(text, 1, 1, 1, true)
-    GameTooltip:Show()
-end
-
 local function Setup()
     local communities = CommunitiesFrame
     local list = communities and communities.MemberList
-    if memberList or not (list and list.ScrollBox and list.ShowOfflineButton and list.RefreshListDisplay) then
+    if memberList or not (list and list.ScrollBox and list.RefreshListDisplay) then
         return
     end
     memberList = list
-
-    statsButton = CreateFrame("Button", nil, list, "UIPanelButtonTemplate")
-    statsButton:SetHeight(RosterView.BUTTON_HEIGHT)
-    statsButton:SetPoint("BOTTOMLEFT", list, "TOPLEFT", OFFLINE_X, RosterView.BUTTON_Y)
-    statsButton:SetText(L["Statistics"])
-    ns.MyData.FitToText(statsButton, 0)
-    statsButton:SetScript("OnClick", function()
-        ns.Stats.Toggle()
-    end)
-    statsButton:SetScript("OnEnter", function(self)
-        ShowTooltip(self, L["Statistics"], L["The guild's members in numbers, and a list of them to filter."])
-    end)
-    statsButton:SetScript("OnLeave", GameTooltip_Hide)
-    statsButton:Hide()
-    RosterView.statsButton = statsButton
-
     hooksecurefunc(list, "RefreshListDisplay", ListShown)
+    -- The game's "Offline members" box was clicked: the Statistics window's
+    -- box follows it (the other way round, our code would draw the
+    -- roster's rows).
+    if type(list.SetShowOfflinePlayers) == "function" then
+        hooksecurefunc(list, "SetShowOfflinePlayers", function(_, show)
+            Filters.SetShowOffline(show)
+        end)
+    end
     ScrollUtil.AddAcquiredFrameCallback(list.ScrollBox, function(_, row)
         HookRow(row)
     end, RosterView, false)
     list.ScrollBox:ForEachFrame(HookRow)
-    UpdateControls(list)
 end
 
 function RosterView.Init()

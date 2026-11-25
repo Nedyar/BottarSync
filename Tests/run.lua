@@ -19,7 +19,7 @@ dofile(TESTS .. "/game.lua")(H)
 
 local names = { select(3, unpack(arg)) }
 if #names == 0 then
-    names = { "unit", "sync", "export", "kinfolk", "profile", "officers", "roster", "versions" }
+    names = { "unit", "sync", "export", "kinfolk", "profile", "officers", "roster", "info", "versions" }
 end
 for _, name in ipairs(names) do
     local chunk = assert(loadfile(TESTS .. "/test_" .. name .. ".lua"))

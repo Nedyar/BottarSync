@@ -35,6 +35,13 @@ local function MemberList(client)
         return { clubType = self.clubType }
     end)
     rawset(list, "RefreshLayout", function() end)
+    -- Its "Offline members" box's click, as the game's: its own field, its
+    -- setting, and the list filled again.
+    rawset(list, "SetShowOfflinePlayers", function(self, show)
+        self.showOfflinePlayers = show
+        client.showOffline = show
+        self:RefreshListDisplay()
+    end)
     list.ShowOfflineButton = H.NewObject(client, "CheckButton")
     list.ShowOfflineButton.Text = H.NewObject(client, "FontString")
     local scrollBox = H.NewObject(client, "Frame")
@@ -106,6 +113,7 @@ local function Globals(client)
             end,
         },
         ACCEPT = "Accept",
+        COMMUNITIES_MEMBER_LIST_SHOW_OFFLINE = "Offline members",
         SAVE = "Save",
         DECLINE = "Decline",
         CreateDataProvider = Provider,
@@ -214,10 +222,13 @@ local Filters = ns.Filters
 local list = env.CommunitiesFrame.MemberList
 
 H.section("Roster: the game's own")
-local button = ns.RosterView.statsButton
-H.check(button ~= nil and button:IsShown(), "a Statistics button on the guild's Roster tab")
-H.check(button._point ~= nil, "placed where the game's Offline members box was")
-H.check(list.ShowOfflineButton._point[2] == button, "which moves right of it")
+-- The Statistics button is on the guild window's title bar (see
+-- test_kinfolk.lua): nothing of ours on the Roster tab, and the game's
+-- Offline members box stays in its place.
+local button = ns.Stats.guildWindowButton
+H.check(button ~= nil and button._parent == env.CommunitiesFrame and button:IsShown(), "a Statistics button on the guild window")
+H.eq(ns.RosterView.statsButton, nil, "none on the Roster tab")
+H.eq(list.ShowOfflineButton._point, nil, "the game's Offline members box is not moved")
 -- A script of the guild window or its list hooked with HookScript runs in
 -- the same execution as the scripts of the window's children that follow
 -- it, and taints the roster's rows (and then the game blocks changing a
@@ -242,13 +253,6 @@ world:RunFor(5)
 H.check(list._refreshes == refreshes and list.ScrollBox._provider == list._made,
     "changing the filters, or the guild's data, never draws the roster again")
 Filters.ToggleKind("all")
--- Another community's roster: no button.
-list.clubType = 1
-list:RefreshListDisplay()
-H.check(not button:IsShown(), "nothing on another community's roster")
-list.clubType = 2
-list:RefreshListDisplay()
-H.check(button:IsShown(), "back on the guild's")
 Errors(world, "the game's own")
 
 H.section("Roster: a member's tooltip")
@@ -356,6 +360,29 @@ H.eq(Chosen(), "all", "chosen at first, alone")
 local all = "Caja Fuerte, Kantrul Steadyshot, Nedyar Cazador, Nedyar Mago, Viejo Guerrero"
 H.eq(Listed(officer), all, "the list beside the numbers: every member, by name")
 H.eq(window.MembersHeading._text, "Members (5)", "and how many")
+-- Offline members: the game's own box, beside the Characters heading.
+local offlineBox = window.OfflineBox
+H.check(offlineBox ~= nil and offlineBox._point[2] == window.KindsHeading and offlineBox.Text._text == "Offline members",
+    "the game's Offline members box beside the Characters heading, with the game's text")
+H.check(offlineBox:GetChecked(), "ticked, as the game's roster box was left")
+local before = list._refreshes
+offlineBox:SetChecked(false)
+Click(offlineBox)
+world:RunFor(1)
+H.eq(cards.all.Number._text, "2", "unticked: the numbers count the online members only")
+H.eq(Listed(officer), "Kantrul Steadyshot, Nedyar Mago", "and the list too")
+H.check(list._refreshes == before and list.showOfflinePlayers == nil and officer.showOffline == true,
+    "the game's roster is left as it was (telling it would make our code draw its rows)")
+list:SetShowOfflinePlayers(false)
+list:SetShowOfflinePlayers(true)
+world:RunFor(1)
+H.check(offlineBox:GetChecked() and cards.all.Number._text == "5", "a click on the game's own box: ours follows it")
+list:SetShowOfflinePlayers(false)
+world:RunFor(1)
+H.check(not offlineBox:GetChecked() and cards.all.Number._text == "2", "both ways")
+list:SetShowOfflinePlayers(true)
+world:RunFor(1)
+refreshes = list._refreshes
 Click(cards.main)
 world:RunFor(1)
 H.eq(Chosen(), "main", "a click on Mains chooses it alone")
@@ -580,8 +607,8 @@ for _, entry in ipairs(Filters.Listed()) do
     names[#names + 1] = entry.name
 end
 H.eq(table.concat(names, ", "), all, "so it opens with All chosen again")
-H.check(list._refreshes == refreshes + 2 and list.ScrollBox._provider == list._made,
-    "the roster was never drawn by Bot'tar Sync (twice by the test itself)")
+H.check(list._refreshes == refreshes and list.ScrollBox._provider == list._made,
+    "the roster was never drawn by Bot'tar Sync")
 H.eq(InRoster(officer), everyone, "and lists everyone")
 Errors(world, "the window")
 
