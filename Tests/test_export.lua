@@ -84,6 +84,8 @@ for i, member in ipairs(guild.members) do
     names[i] = member.name
 end
 H.eq(table.concat(names, ","), "Alice Smith,Carol White,Dan Brown,Erin Gray", "members sorted by name")
+H.eq(table.concat(guild._order, ","), "name,rosterUpdatedAt,memberCount,membersWithAddon,members,events", "guild fields")
+H.eq(guild.events, NULL, "no events without Guild Raids & Events")
 
 H.section("Export: a member with the addon")
 local a = Find(guild.members, "name", "Alice Smith")
@@ -233,12 +235,128 @@ world:RunFor(150)
 gina.env.SlashCmdList.BOTTARSYNC("status")
 local said = table.concat(gina.printed, "\n")
 local _, missing = said:gsub("is turned off or not installed: the file for the bot goes without its data", "")
-H.eq(missing, 2, "the status says what is missing")
+H.eq(missing, 3, "the status says what is missing")
 world:Logout(gina)
 local g = Find(H.DecodeJSON(gina.saved.BottarSyncJSON).guilds[1].members, "name", "Alice Smith")
 H.check(g ~= nil and g.hasAddon == true and g.class.id == 3, "the file still has the members")
 H.check(g.professions == NULL and g.talents == NULL and g.equipment == NULL and g.itemLevel == NULL, "without the other addons' data")
 Errors(world, "without the other addons")
+
+H.section("Export: the guild's events")
+-- Guild Raids & Events, by its public API (its API.lua): the events as
+-- GetEvents gives them. Once it packed its records at logout, it can read
+-- none (packed), so the file takes the copy kept.
+local function FakeEvents()
+    local api = { API_VERSION = 1, events = {}, listeners = {}, packed = false }
+    function api.GetEvents(which)
+        api.asked = which
+        return api.packed and {} or api.events
+    end
+    function api.OnChange(callback)
+        api.listeners[#api.listeners + 1] = callback
+        return true
+    end
+    function api.Change(events)
+        api.events = events
+        for _, callback in ipairs(api.listeners) do
+            callback()
+        end
+    end
+    return api
+end
+local api = FakeEvents()
+local hana = world:NewClient("Hana Events", { classID = 2, globals = { GuildRaidsEvents = api } })
+world:Login(hana)
+world:RunFor(10)
+local START = 1767297600 -- 2026-01-01 20:00 in the game's calendar
+local OFFSET = 3600      -- the calendar runs an hour ahead of UTC
+local function SignUp(name, status, manage, extra)
+    local signUp = {
+        name = name, guid = "Player-1-" .. name:gsub(" ", ""), class = "PRIEST", level = 42, status = status,
+        role = "healer", time = 1760000100, manage = manage, external = false, calendar = false,
+    }
+    for key, value in pairs(extra or {}) do
+        signUp[key] = value
+    end
+    return signUp
+end
+local raid = {
+    key = hana.guid .. "/1", title = "Molten Core", type = "raid", place = "Molten Core", placeID = 409,
+    start = START + 86400, startUnix = START + 86400 - OFFSET, description = "Fire resistance, please",
+    organizer = "Hana Events", organizerGUID = hana.guid, slots = { tank = 2, healer = 4, damage = 14 },
+    minLevel = 55, weekly = true, locked = false, calendarID = 321, changed = 1760000000, madeInCalendar = false,
+    signUps = {
+        SignUp("Alice Smith", "signedUp", "confirmed", { guid = alice.guid, class = "HUNTER", level = 60, role = "damage", note = "10 min late" }),
+        SignUp("Dan Brown", "tentative", nil, { external = true }),
+        SignUp("Erin Gray", "signedUp", nil, { role = "tank" }),
+        SignUp("Ivy Rose", "declined", nil),
+        SignUp("Jon Snow", "signedUp", "tentative"),
+        SignUp("Kim Lee", "signedUp", "standby"),
+        SignUp("Leo Fox", "signedUp", "out", { calendar = true }),
+    },
+}
+raid.signUps[7].role = nil
+local meeting = {
+    key = "Player-1-00000099/C77", title = "Guild meeting", type = "meeting", place = nil, placeID = nil,
+    start = START, startUnix = START - OFFSET, description = nil, organizer = "Someone Else",
+    organizerGUID = "Player-1-00000099", slots = nil, minLevel = 0, weekly = false, locked = true, calendarID = 77,
+    changed = 0, madeInCalendar = true, signUps = {},
+}
+api.Change({ raid, meeting })
+world:RunFor(2)
+H.eq(api.asked, "all", "it asks for every event: those to come and those of the last week")
+api.packed = true
+world:Logout(hana)
+local hanaGuild = H.DecodeJSON(hana.saved.BottarSyncJSON).guilds[1]
+local events = hanaGuild.events
+H.check(type(events) == "table" and #events == 2, "the guild's events, though the addon could not be read at logout")
+H.eq(events[1].title, "Guild meeting", "the soonest first")
+local mc = events[2]
+H.eq(table.concat(mc._order, ","),
+    "key,title,type,place,placeId,start,startRealm,description,organizer,slots,minLevel,weekly,locked,calendarId,madeInCalendar,changedAt,signUps",
+    "event fields, in the documented order")
+H.check(mc.key == raid.key and mc.type == "raid" and mc.place == "Molten Core" and mc.placeId == 409, "what and where")
+H.eq(mc.start, START + 86400 - OFFSET, "when, as a Unix time")
+H.eq(mc.startRealm, os.date("!%Y-%m-%dT%H:%M", START + 86400), "and as the game's calendar shows it")
+H.eq(mc.description, "Fire resistance, please", "its description")
+H.check(mc.organizer.guid == hana.guid and mc.organizer.name == "Hana Events", "its organizer")
+H.check(mc.slots.tank == 2 and mc.slots.healer == 4 and mc.slots.damage == 14, "places per role")
+H.check(mc.minLevel == 55 and mc.weekly == true and mc.locked == false and mc.calendarId == 321, "level, weekly, locked, calendar ID")
+H.check(mc.madeInCalendar == false and mc.changedAt == 1760000000, "made with the addon, and when it changed")
+local m = events[1]
+H.check(m.place == NULL and m.placeId == NULL and m.slots == NULL and m.minLevel == NULL and m.description == NULL,
+    "an event without a place, places, level or description: null")
+H.check(m.madeInCalendar == true and m.changedAt == NULL and m.locked == true and #m.signUps == 0,
+    "one made in the game's calendar")
+local states, signUps = {}, mc.signUps
+for i, signUp in ipairs(signUps) do
+    states[i] = signUp.name .. "=" .. signUp.state
+end
+H.eq(table.concat(states, ","),
+    "Alice Smith=confirmed,Dan Brown=tentative,Erin Gray=signedUp,Ivy Rose=notSignedUp,Jon Snow=tentative,Kim Lee=standby,Leo Fox=out",
+    "each sign-up's one state, as the calendar shows it, in the order they were made")
+local first = signUps[1]
+H.eq(table.concat(first._order, ","), "guid,name,class,level,state,role,note,answeredAt,external,calendarOnly", "sign-up fields")
+H.check(first.guid == alice.guid and first.class.token == "HUNTER" and first.class.id == 3 and first.level == 60,
+    "who: GUID, class and level, as in members")
+H.check(first.role == "damage" and first.note == "10 min late" and first.answeredAt == 1760000100, "role, note, when")
+H.check(signUps[2].external == true and signUps[2].note == NULL, "one brought in from outside the game")
+H.check(signUps[7].calendarOnly == true and signUps[7].role == NULL, "one made in the game's calendar, without a role")
+Errors(world, "events")
+
+H.section("Export: the events' copy is kept current")
+api.packed = false
+world:Login(hana)
+world:RunFor(10)
+api.Change({ meeting })
+world:RunFor(2)
+api.events = { raid } -- a change it has not told yet
+world:FireEvent(hana, "PLAYER_LEAVING_WORLD")
+api.packed = true
+world:Logout(hana)
+events = H.DecodeJSON(hana.saved.BottarSyncJSON).guilds[1].events
+H.check(#events == 1 and events[1].title == "Molten Core", "taken again as the player leaves the world, before the logout")
+Errors(world, "events' copy")
 
 H.section("Export: turned off")
 world:Login(carol)

@@ -5,7 +5,7 @@ local H = ...
 -- (Discord usernames, mains and alts) included. The release is taken from
 -- its git tag (H.Release). Both run the guild's other addons, as the
 -- CurseForge app installs them.
-local RELEASE = "v0.9.0"
+local RELEASE = "v0.9.1"
 
 H.section("Versions: against " .. RELEASE)
 local old = H.Release(RELEASE)

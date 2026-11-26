@@ -98,8 +98,11 @@ also accept every other Lua 5.1 escape.
     "Share gear", on until they untick it. Without the talents, a spec still
     comes with its points per tab; without the gear, there are no items worn
     nor item level.
+  - **Guild Raids & Events**: the guild's raids, dungeons and events, and who
+    signed up to each. They are kept in step with the game's calendar, so
+    the events made there, and the sign-ups given there, come too.
 - A member who runs only some of these addons has only that part in the
-  file; the admin's client needs all three to write all of it.
+  file; the admin's client needs all four to write all of it.
 - When a client logs in, whoever is online sends it what it is missing. So the
   admin also gets the data of members they never see online, as long as
   someone with the addon is online when the admin logs in.
@@ -140,6 +143,7 @@ ignore fields it does not know.
 | `memberCount` | number | How many members are in `members`. |
 | `membersWithAddon` | number | How many of them have addon data. |
 | `members` | list | Every member of the guild roster, sorted by name. |
+| `events` | list or `null` | The guild's events, the soonest first: those to come, and those of the last 7 days. See below. `null` when they are not known: the admin's client runs without Guild Raids & Events, or the guild is not the one the admin's character is in. |
 
 Members who leave the guild disappear from `members` at the next roster read.
 
@@ -230,6 +234,45 @@ Only slots with something equipped.
 | `itemLevel` | number or `null` | Item level. |
 | `enchantId` | number or `null` | Enchant ID, if any. |
 | `itemString` | text | The game's full item string (`item:ID:enchant:gems...:suffix:...`), without the fields that change on their own. On WoW Forever random suffixes usually come as bonus IDs, and crafted items end with the GUID of whoever crafted them. |
+
+### Event (`events[]`)
+
+| Field | Type | Meaning |
+|---|---|---|
+| `key` | text | The event's unique ID, e.g. `"Player-1234-0ABCDEF0/3"`. It never changes. |
+| `title` | text | Title. |
+| `type` | text | `"raid"`, `"dungeon"`, `"pvp"`, `"meeting"` or `"other"`. |
+| `place` | text or `null` | The raid, dungeon or battleground, translated. |
+| `placeId` | number or `null` | Its ID in the game's Group Finder; `999999` for world PvP. |
+| `start` | number | When it starts (Unix). |
+| `startRealm` | text | The same as the game's calendar shows it, in the realm's time, e.g. `"2026-11-27T21:00"`. |
+| `description` | text or `null` | Description. |
+| `organizer` | object | `guid` and `name` of the character who made it. |
+| `slots` | object or `null` | Places per role: `tank`, `healer` and `damage`. `null`: no limit. |
+| `minLevel` | number or `null` | Minimum level, if any. |
+| `weekly` | boolean | Repeats every week: the addon makes next week's event, with a `key` of its own. |
+| `locked` | boolean | Locked in the calendar: members cannot sign up nor change their answer. |
+| `calendarId` | number or `null` | The game's calendar event ID. |
+| `madeInCalendar` | boolean | Made in the game's calendar by a member without the addon: it has only what the calendar keeps (no place, slots, level nor weekly). |
+| `changedAt` | number or `null` | Last change (Unix); `null` for those made in the calendar. |
+| `signUps` | list | Who answered, in the order they did. See below. |
+
+An event deleted (in game or in the calendar) disappears from `events`.
+
+### Sign-up (`signUps[]`)
+
+| Field | Type | Meaning |
+|---|---|---|
+| `guid` | text | The character, as in `members`. |
+| `name` | text | Its name. |
+| `class` | object or `null` | As in `members`. |
+| `level` | number or `null` | Level. |
+| `state` | text | As the game's calendar shows it: `"signedUp"`, `"tentative"`, `"confirmed"`, `"standby"`, `"out"`, or `"notSignedUp"` (it took its sign-up back; see `answeredAt`). `confirmed`, `standby` and `out` are given by the organizer or a moderator; `tentative` too, or by the member. Those who go: `signedUp` and `confirmed`. |
+| `role` | text or `null` | `"tank"`, `"healer"` or `"damage"`. `null` for sign-ups made in the game's calendar, which has no roles (the addon shows them as damage). |
+| `note` | text or `null` | The member's note, up to 60 letters. |
+| `answeredAt` | number or `null` | When they answered (Unix). |
+| `external` | boolean | Brought in from outside the game (from Discord, in a later version). |
+| `calendarOnly` | boolean | Given in the game's calendar by a member without the addon, or with it off. |
 
 ## Example
 
@@ -345,6 +388,40 @@ Alice's second spec is cut short.
           "professions": null,
           "talents": null,
           "equipment": null
+        }
+      ],
+      "events": [
+        {
+          "key": "Player-1-00000002/1",
+          "title": "Molten Core",
+          "type": "raid",
+          "place": "Molten Core",
+          "placeId": 409,
+          "start": 1767380400,
+          "startRealm": "2026-01-02T20:00",
+          "description": "Fire resistance, please",
+          "organizer": { "guid": "Player-1-00000002", "name": "Carol White" },
+          "slots": { "tank": 2, "healer": 4, "damage": 14 },
+          "minLevel": 55,
+          "weekly": true,
+          "locked": false,
+          "calendarId": 321,
+          "madeInCalendar": false,
+          "changedAt": 1760000000,
+          "signUps": [
+            {
+              "guid": "Player-1-00000001", "name": "Alice Smith",
+              "class": { "id": 3, "token": "HUNTER", "name": "Hunter" }, "level": 60,
+              "state": "confirmed", "role": "damage", "note": "10 min late",
+              "answeredAt": 1760000100, "external": false, "calendarOnly": false
+            },
+            {
+              "guid": "Player-1-00000003", "name": "Dan Brown",
+              "class": { "id": 5, "token": "PRIEST", "name": "Priest" }, "level": 42,
+              "state": "tentative", "role": "healer", "note": null,
+              "answeredAt": 1760000160, "external": false, "calendarOnly": false
+            }
+          ]
         }
       ]
     }

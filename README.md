@@ -51,7 +51,9 @@ guild's other addons share.
   shares its own part, and Bot'tar Sync reads it from them when it writes
   the file: professions and recipes from Guild Professions & Recipes;
   talents (both specs with dual spec), the items worn and the item level
-  from Guild Builds, as each member chooses to share them there.
+  from Guild Builds, as each member chooses to share them there; the
+  guild's raids, dungeons and events, and who signed up to each, from Guild
+  Raids & Events.
 - **Automatic sharing.** The data goes to the rest of the guild through hidden
   addon messages, which never appear in any chat window. When you log in, a
   guild member who is online sends you whatever you are missing, so as long as
@@ -69,10 +71,11 @@ guild's other addons share.
   traditional).
 - **The guild's other addons come with it.** Guild Professions & Recipes
   (crafting orders and who knows each recipe), Guild Bank Alts (the guild
-  bank kept on characters) and Guild Builds (talent builds and gear sets in
-  the guild roster) are separate addons, which anyone can install on their
-  own. The guild also uses KinFolk, a guild hub addon by another author.
-  The CurseForge app installs all four with Bot'tar Sync, so a
+  bank kept on characters), Guild Builds (talent builds and gear sets in
+  the guild roster) and Guild Raids & Events (raids, dungeons and events
+  kept in step with the game's calendar) are separate addons, which anyone
+  can install on their own. The guild also uses KinFolk, a guild hub addon
+  by another author. The CurseForge app installs all five with Bot'tar Sync, so a
   guild member only needs this one. In game Bot'tar Sync loads after them,
   but runs without them: a member who turns one off keeps sharing their
   characters, and a file written without one goes without its part

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.10.0 - The guild's events in the file for the bot
+
+- **Brings Guild Raids & Events**, the guild's raids, dungeons and events kept in step with the game's calendar: the CurseForge app now installs it with Bot'tar Sync, together with the guild's other addons. Bot'tar Sync still runs without it.
+- **The file for the bot has the guild's events**: each guild gets `events`, those to come and those of the last week, with their place, time, places per role, level, organizer and every sign-up (its state as the game's calendar shows it, role and note). `/bottar status` says when Guild Raids & Events is off or missing. See Bot/README.md.
+- Members on 0.9 and this version share everything: nobody has to update at once.
+
 ## 0.9.1 - The guild window from the Statistics window
 
 - **A guild window button on the Statistics window**: the guild tabard, left of its close button, as on KinFolk's window. It opens and closes the game's guild window, and the Statistics window stays open.

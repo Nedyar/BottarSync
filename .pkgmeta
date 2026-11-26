@@ -20,4 +20,5 @@ required-dependencies:
     - guild-professions-recipes
     - guild-bank-alts
     - guild-builds
+    - guild-raids-events
     - kinfolk-guild-hub

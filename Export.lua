@@ -17,7 +17,8 @@
 -- their mains: Profile.lua) and the roster from Bot'tar Sync, professions
 -- and recipes from
 -- Guild Professions & Recipes, talents, items worn and item level from Guild
--- Builds.
+-- Builds. The guild's events and their sign-ups come from Guild Raids &
+-- Events.
 local _, ns = ...
 local L = ns.L
 local Json = ns.Json
@@ -313,6 +314,89 @@ local function MemberJSON(guid, entry, record, crafts, builds, who, now)
         "equipment", builds and type(builds.w) == "table" and EquipmentJSON(builds.w) or nil)
 end
 
+-- The guild's events ------------------------------------------------------------------
+
+-- A sign-up's one state, as the game's calendar shows it: from the
+-- member's answer (signedUp, tentative, declined: none, or taken back) and
+-- the status those who manage the event gave it (confirmed, standby, out,
+-- tentative), which Guild Raids & Events already made one.
+local function SignUpState(signUp)
+    if signUp.status == "declined" then
+        return "notSignedUp"
+    elseif signUp.status == "tentative" then
+        return "tentative"
+    end
+    return signUp.manage or "signedUp"
+end
+
+local function Unix(value)
+    return type(value) == "number" and value > 0 and value or nil
+end
+
+local function SignUpJSON(signUp)
+    return Object(
+        "guid", signUp.guid,
+        "name", signUp.name,
+        "class", ClassJSON(signUp.class),
+        "level", signUp.level,
+        "state", SignUpState(signUp),
+        "role", signUp.role,
+        "note", Text(signUp.note),
+        "answeredAt", Unix(signUp.time),
+        "external", signUp.external == true,
+        "calendarOnly", signUp.calendar == true)
+end
+
+-- event: one of Guild Raids & Events' GetEvents (its API.lua).
+local function EventJSON(event)
+    local signUps = {}
+    for _, signUp in ipairs(event.signUps or {}) do
+        signUps[#signUps + 1] = SignUpJSON(signUp)
+    end
+    local slots = event.slots
+    return Object(
+        "key", event.key,
+        "title", event.title,
+        "type", event.type,
+        "place", Text(event.place),
+        "placeId", event.placeID,
+        "start", event.startUnix,
+        "startRealm", type(event.start) == "number" and date("!%Y-%m-%dT%H:%M", event.start) or nil,
+        "description", Text(event.description),
+        "organizer", Object("guid", event.organizerGUID, "name", event.organizer),
+        "slots", type(slots) == "table" and Object("tank", slots.tank, "healer", slots.healer, "damage", slots.damage) or nil,
+        "minLevel", type(event.minLevel) == "number" and event.minLevel > 0 and event.minLevel or nil,
+        "weekly", event.weekly == true,
+        "locked", event.locked == true,
+        "calendarId", event.calendarID,
+        "madeInCalendar", event.madeInCalendar == true,
+        "changedAt", Unix(event.changed),
+        "signUps", Array(signUps))
+end
+
+-- A guild's events, the soonest first, or nil when they are not known.
+local function EventsJSON(guildKey)
+    local events = Sources.Events(guildKey)
+    if not events then
+        return nil
+    end
+    local sorted = {}
+    for i, event in ipairs(events) do
+        sorted[i] = event
+    end
+    table.sort(sorted, function(a, b)
+        if a.startUnix ~= b.startUnix then
+            return (a.startUnix or 0) < (b.startUnix or 0)
+        end
+        return tostring(a.key) < tostring(b.key)
+    end)
+    local list = {}
+    for i, event in ipairs(sorted) do
+        list[i] = EventJSON(event)
+    end
+    return Array(list)
+end
+
 -- The whole file ---------------------------------------------------------------------
 
 -- What each source knows of a guild's members: { records, crafts, builds },
@@ -387,7 +471,8 @@ local function GuildJSON(guildKey, guild, now)
         "rosterUpdatedAt", guild.roster and guild.roster.t or nil,
         "memberCount", #members,
         "membersWithAddon", withAddon,
-        "members", Array(members))
+        "members", Array(members),
+        "events", EventsJSON(guildKey))
 end
 
 local function SortedGuildKeys()
@@ -517,6 +602,7 @@ end
 
 function Export.Init()
     Sources.OnRecordChanged(Sources.BUILDS, Warm)
+    Sources.WatchEvents()
     -- What was loaded from the saved file, a little after the login.
     C_Timer.After(20, function()
         for guildKey in pairs(ns.db.guilds) do

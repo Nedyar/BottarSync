@@ -2,7 +2,8 @@
 -- who plays them (their Discord name, mains and alts: Profile.lua, which
 -- the guild's officers may set over what the players say: Officers.lua), and
 -- writes them, as JSON, into the saved variables file for the Bot'tar bot,
--- together with what the guild's other addons share (Sources.lua). From the
+-- together with what the guild's other addons share, the guild's events
+-- among it (Sources.lua). From the
 -- game's guild window it opens a Statistics window, with a list of the
 -- members to filter (Filters.lua, Stats.lua, RosterView.lua), and its Guild
 -- Info tab shows the whole message of the day and the guild's Discord link
@@ -125,8 +126,9 @@ local function PrintStatus()
         ns.Print(L["guild %s: data on %d |4character:characters; with the addon, %d |4member:members; in the roster."], guildKey, count, ns.Roster.total)
     end
 
-    for _, addonName in ipairs({ ns.Sources.PROFESSIONS, ns.Sources.BUILDS }) do
-        if not ns.Sources.Has(addonName) then
+    for _, addonName in ipairs({ ns.Sources.PROFESSIONS, ns.Sources.BUILDS, ns.Sources.EVENTS }) do
+        local has = addonName == ns.Sources.EVENTS and ns.Sources.HasEvents() or ns.Sources.Has(addonName)
+        if not has then
             ns.Print(L["%s is turned off or not installed: the file for the bot goes without its data."], ns.Sources.Title(addonName))
         end
     end
